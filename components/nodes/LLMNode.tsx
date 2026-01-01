@@ -8,9 +8,7 @@ import { Sparkles, Play, Loader2 } from "lucide-react";
 interface LLMNodeData {
   model: string;
   systemPrompt?: string;
-  userMessage?: string;
   output?: string;
-  images?: string[];
   loading?: boolean;
 }
 
@@ -33,15 +31,8 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
   );
 
   const handleSystemPromptChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       updateNodeData(id, { systemPrompt: e.target.value });
-    },
-    [id, updateNodeData]
-  );
-
-  const handleUserMessageChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      updateNodeData(id, { userMessage: e.target.value });
     },
     [id, updateNodeData]
   );
@@ -49,8 +40,8 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
   const collectInputs = useCallback(() => {
     // Find connected nodes
     const incomingEdges = edges.filter((e) => e.target === id);
-    let systemPrompt = data.systemPrompt || "";
-    let userMessage = data.userMessage || "";
+    const systemPrompt = data.systemPrompt || "";
+    let prompt = "";
     const images: string[] = [];
 
     for (const edge of incomingEdges) {
@@ -61,31 +52,19 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
       
       if (sourceNode.type === "text") {
         const text = sourceNode.data?.text || "";
-        if (targetHandle === "system_prompt") {
-          systemPrompt = text;
-        } else if (targetHandle === "user_message") {
-          userMessage = text;
-        } else if (!userMessage) {
-          // Default to user message if no specific handle and no user message set
-          userMessage = text;
+        if (targetHandle === "prompt") {
+          prompt = text;
         }
       } else if (sourceNode.type === "image") {
-        const imageUrl = sourceNode.data?.imageUrl;
-        if (imageUrl && targetHandle === "images") {
+        // Use Cloudinary URL if available, otherwise use base64
+        const imageUrl = sourceNode.data?.imageUrl || sourceNode.data?.imageBase64;
+        if (imageUrl && targetHandle === "image") {
           images.push(imageUrl);
         }
       }
     }
 
-    // Use manual inputs if no connections
-    if (!systemPrompt && data.systemPrompt) {
-      systemPrompt = data.systemPrompt;
-    }
-    if (!userMessage && data.userMessage) {
-      userMessage = data.userMessage;
-    }
-
-    return { systemPrompt, userMessage, images };
+    return { systemPrompt, prompt, images };
   }, [id, nodes, edges, data]);
 
   const handleRun = useCallback(async () => {
@@ -93,10 +72,10 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
     updateNodeData(id, { loading: true });
 
     try {
-      const { systemPrompt, userMessage, images } = collectInputs();
+      const { systemPrompt, prompt, images } = collectInputs();
 
-      if (!userMessage && images.length === 0) {
-        alert("Please provide a user message or connect image nodes");
+      if (!prompt && images.length === 0) {
+        alert("Please connect a Prompt node or Image node to the input handles");
         setLoading(false);
         updateNodeData(id, { loading: false });
         return;
@@ -110,7 +89,7 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
         body: JSON.stringify({
           model: data.model || "gemini-2.5-flash",
           systemPrompt: systemPrompt || undefined,
-          userMessage: userMessage || "Analyze the images",
+          userMessage: prompt || (images.length > 0 ? "Analyze the images" : ""),
           images: images.length > 0 ? images : undefined,
         }),
       });
@@ -136,7 +115,37 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
   }, [id, data, collectInputs, updateNodeData]);
 
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg min-w-[300px]">
+    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg min-w-[280px] relative">
+      {/* Prompt Input Handle - Left side */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="prompt"
+        className="w-4 h-4 bg-white border-2 border-black rounded-full"
+        style={{ top: "35%" }}
+      />
+      <div
+        className="absolute left-[-60px] top-[35%] transform -translate-y-1/2 text-sm font-medium text-[#FFA500] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none"
+        style={{ marginTop: "-8px" }}
+      >
+        Prompt
+      </div>
+
+      {/* Image Input Handle - Left side */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="image"
+        className="w-4 h-4 bg-white border-2 border-black rounded-full"
+        style={{ top: "55%" }}
+      />
+      <div
+        className="absolute left-[-60px] top-[55%] transform -translate-y-1/2 text-sm font-medium text-[#FFA500] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none"
+        style={{ marginTop: "-8px" }}
+      >
+        Image*
+      </div>
+
       <div className="flex items-center justify-between px-3 py-2 bg-[#0f0f0f] border-b border-[#2a2a2a] rounded-t-lg">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-gray-400" />
@@ -145,12 +154,23 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
         <button
           onClick={handleRun}
           disabled={loading}
-          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed"
+          className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center gap-1"
         >
-          {loading ? "Running..." : "Run Model"}
+          {loading ? (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Running...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-3 h-3" />
+              <span>Run</span>
+            </>
+          )}
         </button>
       </div>
       <div className="p-3 space-y-3">
+        {/* Model Dropdown */}
         <div>
           <label className="block text-xs font-medium text-gray-300 mb-1">
             Model
@@ -169,77 +189,39 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           </select>
         </div>
 
+        {/* System Prompt Input */}
         <div>
           <label className="block text-xs font-medium text-gray-300 mb-1">
-            System Prompt (Optional)
+            System Prompt
           </label>
-          <Handle
-            type="target"
-            position={Position.Left}
-            id="system_prompt"
-            className="w-3 h-3 bg-green-500 border-2 border-[#0a0a0a]"
-            style={{ top: "30%" }}
-          />
-          <textarea
+          <input
+            type="text"
             value={data.systemPrompt || ""}
             onChange={handleSystemPromptChange}
-            placeholder="System prompt..."
-            className="w-full min-h-[60px] p-2 text-sm bg-[#0f0f0f] border border-[#2a2a2a] rounded resize-none focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-300 placeholder-gray-500"
+            placeholder="System prompt (optional)..."
+            className="w-full p-2 text-sm bg-[#0f0f0f] border border-[#2a2a2a] rounded focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-300 placeholder-gray-500"
             disabled={loading}
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-gray-300 mb-1">
-            User Message
-          </label>
-          <Handle
-            type="target"
-            position={Position.Left}
-            id="user_message"
-            className="w-3 h-3 bg-green-500 border-2 border-[#0a0a0a]"
-            style={{ top: "50%" }}
-          />
-          <textarea
-            value={data.userMessage || ""}
-            onChange={handleUserMessageChange}
-            placeholder="User message..."
-            className="w-full min-h-[60px] p-2 text-sm bg-[#0f0f0f] border border-[#2a2a2a] rounded resize-none focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-300 placeholder-gray-500"
-            disabled={loading}
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-gray-300 mb-1">
-            Images (Optional)
-          </label>
-          <Handle
-            type="target"
-            position={Position.Left}
-            id="images"
-            className="w-3 h-3 bg-green-500 border-2 border-[#0a0a0a]"
-            style={{ top: "70%" }}
-          />
-          <div className="text-xs text-gray-400">
-            Connect Image Nodes to this handle
-          </div>
-        </div>
-
+        {/* Output Section */}
         {data.output && (
           <div className="mt-3 p-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded">
             <label className="block text-xs font-medium text-gray-300 mb-1">
               Output
             </label>
-            <div className="text-sm text-gray-300 whitespace-pre-wrap">
+            <div className="text-sm text-gray-300 whitespace-pre-wrap max-h-32 overflow-y-auto">
               {data.output}
             </div>
           </div>
         )}
       </div>
+      {/* Output Handle - Right side */}
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3 h-3 bg-green-500 border-2 border-[#0a0a0a]"
+        className="w-4 h-4 bg-green-500 border-2 border-[#0a0a0a] rounded-full"
+        style={{ top: "50%" }}
       />
     </div>
   );

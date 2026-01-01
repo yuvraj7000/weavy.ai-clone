@@ -33,6 +33,63 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
     if (!name) return;
 
     try {
+      // Find all image nodes with base64 data that need to be uploaded
+      const imageNodes = nodes.filter(
+        (node) => node.type === "image" && node.data?.imageBase64 && !node.data?.imageUrl
+      );
+
+      // Upload images to Cloudinary
+      const updatedNodes = [...nodes];
+      for (const imageNode of imageNodes) {
+        try {
+          const base64Data = imageNode.data.imageBase64 as string;
+          // Extract raw base64 (remove data URI prefix)
+          const base64WithoutPrefix = base64Data.includes(",")
+            ? base64Data.split(",")[1]
+            : base64Data;
+
+          const formData = new FormData();
+          formData.append("base64", base64WithoutPrefix);
+
+          const uploadResponse = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const uploadResult = await uploadResponse.json();
+
+          if (uploadResult.success) {
+            // Update the node with Cloudinary URL
+            const nodeIndex = updatedNodes.findIndex((n) => n.id === imageNode.id);
+            if (nodeIndex !== -1) {
+              updatedNodes[nodeIndex] = {
+                ...updatedNodes[nodeIndex],
+                data: {
+                  ...updatedNodes[nodeIndex].data,
+                  imageUrl: uploadResult.data.url,
+                  imageBase64: undefined, // Clear base64 after upload
+                },
+              };
+            }
+          } else {
+            console.error(`Failed to upload image for node ${imageNode.id}:`, uploadResult.error);
+          }
+        } catch (error) {
+          console.error(`Error uploading image for node ${imageNode.id}:`, error);
+        }
+      }
+
+      // Update the store with uploaded images
+      updatedNodes.forEach((node) => {
+        if (node.type === "image" && node.data?.imageUrl) {
+          useWorkflowStore.getState().updateNodeData(node.id, {
+            imageUrl: node.data.imageUrl,
+            imageBase64: undefined,
+          });
+        }
+      });
+
+      // Save workflow with updated nodes
       const response = await fetch("/api/workflows", {
         method: "POST",
         headers: {
@@ -40,7 +97,7 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
         },
         body: JSON.stringify({
           name,
-          nodes,
+          nodes: updatedNodes,
           edges,
         }),
       });
@@ -64,7 +121,7 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
 
       if (result.success && result.data.length > 0) {
         const workflowNames = result.data.map(
-          (w: any) => `${w.id} - ${w.name}`
+          (w: { id: string; name: string }) => `${w.id} - ${w.name}`
         );
         const selected = prompt(
           `Enter workflow ID to load:\n\n${workflowNames.join("\n")}`
@@ -72,7 +129,7 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
         if (!selected) return;
 
         const workflow = result.data.find(
-          (w: any) => w.id === selected || w.id === selected.split(" - ")[0]
+          (w: { id: string; name: string }) => w.id === selected || w.id === selected.split(" - ")[0]
         );
 
         if (workflow) {
