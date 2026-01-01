@@ -139,11 +139,11 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
   }, [clearWorkflow]);
 
   return (
-    <div className="absolute top-4 left-72 z-10 flex items-center gap-2 bg-white border border-gray-300 rounded-lg shadow-lg p-2">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg p-2">
       <button
         onClick={undo}
         disabled={!canUndo()}
-        className="p-2 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        className="p-2 hover:bg-[#2a2a2a] rounded disabled:opacity-50 disabled:cursor-not-allowed text-gray-400"
         title="Undo"
       >
         <Undo2 className="w-4 h-4" />
@@ -151,37 +151,37 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
       <button
         onClick={redo}
         disabled={!canRedo()}
-        className="p-2 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        className="p-2 hover:bg-[#2a2a2a] rounded disabled:opacity-50 disabled:cursor-not-allowed text-gray-400"
         title="Redo"
       >
         <Redo2 className="w-4 h-4" />
       </button>
-      <div className="w-px h-6 bg-gray-300" />
+      <div className="w-px h-6 bg-[#2a2a2a]" />
       <button
         onClick={handleSave}
-        className="p-2 hover:bg-gray-100 rounded"
+        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
         title="Save Workflow"
       >
         <Save className="w-4 h-4" />
       </button>
       <button
         onClick={handleLoad}
-        className="p-2 hover:bg-gray-100 rounded"
+        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
         title="Load Workflow"
       >
         <FolderOpen className="w-4 h-4" />
       </button>
-      <div className="w-px h-6 bg-gray-300" />
+      <div className="w-px h-6 bg-[#2a2a2a]" />
       <button
         onClick={handleExport}
-        className="p-2 hover:bg-gray-100 rounded"
+        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
         title="Export JSON"
       >
         <Download className="w-4 h-4" />
       </button>
       <button
         onClick={handleImport}
-        className="p-2 hover:bg-gray-100 rounded"
+        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
         title="Import JSON"
       >
         <Upload className="w-4 h-4" />
@@ -193,10 +193,10 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
         onChange={handleFileImport}
         className="hidden"
       />
-      <div className="w-px h-6 bg-gray-300" />
+      <div className="w-px h-6 bg-[#2a2a2a]" />
       <button
         onClick={handleClear}
-        className="p-2 hover:bg-red-100 rounded text-red-600"
+        className="p-2 hover:bg-red-900 rounded text-red-400"
         title="Clear Workflow"
       >
         <Trash2 className="w-4 h-4" />

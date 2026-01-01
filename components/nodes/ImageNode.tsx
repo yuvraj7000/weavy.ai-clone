@@ -65,10 +65,10 @@ function ImageNode({ id, data }: NodeProps<ImageNodeData>) {
   }, [id, updateNodeData]);
 
   return (
-    <div className="bg-white border-2 border-gray-300 rounded-lg shadow-lg min-w-[250px]">
-      <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 border-b border-gray-300 rounded-t-lg">
-        <ImageIcon className="w-4 h-4 text-gray-600" />
-        <span className="text-sm font-semibold text-gray-700">Image Node</span>
+    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg min-w-[250px]">
+      <div className="flex items-center gap-2 px-3 py-2 bg-[#0f0f0f] border-b border-[#2a2a2a] rounded-t-lg">
+        <ImageIcon className="w-4 h-4 text-gray-400" />
+        <span className="text-sm font-semibold text-gray-300">Image</span>
       </div>
       <div className="p-3">
         {data.imageUrl ? (
@@ -76,25 +76,25 @@ function ImageNode({ id, data }: NodeProps<ImageNodeData>) {
             <img
               src={data.imageUrl}
               alt="Uploaded"
-              className="w-full h-32 object-cover rounded border border-gray-300"
+              className="w-full h-32 object-cover rounded border border-[#2a2a2a]"
             />
             <button
               onClick={handleRemove}
-              className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+              className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
             >
               <X className="w-3 h-3" />
             </button>
           </div>
         ) : (
-          <div className="border-2 border-dashed border-gray-300 rounded p-4 text-center">
+          <div className="border-2 border-dashed border-[#2a2a2a] rounded p-4 text-center">
             {uploading ? (
-              <div className="text-sm text-gray-500">Uploading...</div>
+              <div className="text-sm text-gray-400">Uploading...</div>
             ) : (
               <>
-                <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <Upload className="w-8 h-8 mx-auto mb-2 text-gray-500" />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-sm text-purple-600 hover:text-purple-700"
+                  className="text-sm text-green-400 hover:text-green-300"
                 >
                   Click to upload
                 </button>
@@ -113,7 +113,7 @@ function ImageNode({ id, data }: NodeProps<ImageNodeData>) {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3 h-3 bg-purple-500"
+        className="w-3 h-3 bg-green-500 border-2 border-[#0a0a0a]"
       />
     </div>
   );

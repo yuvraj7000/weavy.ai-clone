@@ -1,37 +1,113 @@
 "use client";
 
-import { useCallback } from "react";
+import React, { useCallback, useState, createContext, useContext } from "react";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { Type, Image as ImageIcon, Sparkles } from "lucide-react";
+import { Type, Image as ImageIcon, Sparkles, Search, Zap, Workflow } from "lucide-react";
+
+const SidebarContext = createContext<{
+  activeSection: "search" | "quick-access" | null;
+  setActiveSection: (section: "search" | "quick-access" | null) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+} | null>(null);
+
+export function useSidebarContext() {
+  const context = useContext(SidebarContext);
+  if (!context) {
+    throw new Error("useSidebarContext must be used within SidebarProvider");
+  }
+  return context;
+}
+
+export { SidebarProvider };
+
+function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const [activeSection, setActiveSection] = useState<"search" | "quick-access" | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  return (
+    <SidebarContext.Provider value={{ activeSection, setActiveSection, searchQuery, setSearchQuery }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
+function PrimarySidebar() {
+  const context = useSidebarContext();
+  const { activeSection, setActiveSection } = context;
+
+  const toggleSection = (section: "search" | "quick-access") => {
+    setActiveSection(activeSection === section ? null : section);
+  };
+
+  return (
+    <div className="w-16 bg-[#212126] border-r border-[#302e33] flex flex-col items-center py-4">
+      <span className="w-12 h-12 flex items-center justify-center rounded-lg mb-6">
+        <Workflow className="w-4 h-4" />
+      </span>
+      <button
+        onClick={() => toggleSection("search")}
+        className={`w-12 h-12 flex items-center justify-center rounded-lg mb-2 transition-colors ${
+          activeSection === "search"
+            ? "bg-[#FAFFC7] text-black"
+            : "text-gray-400 hover:bg-[#1a1a1a] hover:text-gray-300"
+        }`}
+        title="Search"
+      >
+        <Search className="w-5 h-5" />
+      </button>
+      
+      <button
+        onClick={() => toggleSection("quick-access")}
+        className={`w-12 h-12 flex items-center justify-center rounded-lg transition-colors ${
+          activeSection === "quick-access"
+            ? "bg-[#FAFFC7] text-black"
+            : "text-gray-400 hover:bg-[#1a1a1a] hover:text-gray-300"
+        }`}
+        title="Quick Access"
+      >
+        <Zap className="w-5 h-5" />
+      </button>
+    </div>
+  );
+}
 
 export default function Sidebar() {
+  return <PrimarySidebar />;
+}
+
+export function SecondarySidebar() {
+  const context = useSidebarContext();
+  const { activeSection, searchQuery, setSearchQuery } = context;
   const addNode = useWorkflowStore((state) => state.addNode);
 
-  const createTextNode = useCallback(() => {
+  const createTextNode = useCallback((position?: { x: number; y: number }) => {
     const newNode = {
       id: `text-${Date.now()}`,
       type: "text",
-      position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
+      position: position || { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
       data: { text: "" },
     };
     addNode(newNode);
+    // Don't close sidebar when adding node
   }, [addNode]);
 
-  const createImageNode = useCallback(() => {
+  const createImageNode = useCallback((position?: { x: number; y: number }) => {
     const newNode = {
       id: `image-${Date.now()}`,
       type: "image",
-      position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
+      position: position || { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
       data: {},
     };
     addNode(newNode);
+    // Don't close sidebar when adding node
   }, [addNode]);
 
-  const createLLMNode = useCallback(() => {
+  const createLLMNode = useCallback((position?: { x: number; y: number }) => {
     const newNode = {
       id: `llm-${Date.now()}`,
       type: "llm",
-      position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
+      position: position || { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
       data: {
         model: "gemini-2.5-flash",
         systemPrompt: "",
@@ -40,39 +116,120 @@ export default function Sidebar() {
       },
     };
     addNode(newNode);
+    // Don't close sidebar when adding node
   }, [addNode]);
 
+  const nodeButtons = [
+    { icon: Type, label: "Text Node", onClick: createTextNode, type: "text" },
+    { icon: ImageIcon, label: "Image Node", onClick: createImageNode, type: "image" },
+    { icon: Sparkles, label: "Run Any LLM Node", onClick: createLLMNode, type: "llm" },
+  ];
+
+  const filteredNodes = nodeButtons.filter((node) =>
+    node.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="w-64 bg-white border-r border-gray-300 h-full flex flex-col">
-      <div className="p-4 border-b border-gray-300">
-        <h2 className="text-lg font-semibold text-gray-800">Nodes</h2>
+    <div
+      className={`absolute top-0 left-0 z-50 bg-[#212126] border-r border-b border-[#302e33] flex flex-col h-full overflow-hidden shadow-lg transition-all duration-300 ease-in-out ${
+        activeSection
+          ? "w-64 opacity-100 translate-x-0"
+          : "w-0 opacity-0 -translate-x-4 pointer-events-none"
+      }`}
+    >
+      <div className={`py-4 h-18 flex items-center justify-center text-sm font-semibold text-gray-300 w-full text-center border-b border-[#302e33] transition-opacity duration-200 ease-in-out ${
+        activeSection ? "opacity-100 delay-100" : "opacity-0 delay-0"
+      }`}>
+        workFlow Name
       </div>
-      <div className="flex-1 p-4 space-y-3">
-        <button
-          onClick={createTextNode}
-          className="w-full flex items-center gap-3 px-4 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
-        >
-          <Type className="w-5 h-5 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Text Node</span>
-        </button>
+      <div className={`min-w-64 transition-all duration-200 ease-in-out ${
+        activeSection ? "opacity-100 translate-y-0 delay-150" : "opacity-0 translate-y-2 delay-0"
+      }`}>
+        {activeSection === "search" && (
+          <>
+            <div className="p-4">
+              <h2 className="text-sm font-semibold text-gray-300 mb-3">Search</h2>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search nodes..."
+                  className="w-full pl-8 pr-3 py-2 bg-[#1a1a1a] border border-[#302e33] rounded text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#7a7a7d]"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 max-h-[300px]">
+              <div className="space-y-2">
+                {(searchQuery ? filteredNodes : nodeButtons).length > 0 ? (
+                  (searchQuery ? filteredNodes : nodeButtons).map((node, index) => {
+                    const Icon = node.icon;
+                    return (
+                      <div
+                        key={index}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("application/reactflow", JSON.stringify({ type: node.type }));
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        className="cursor-grab active:cursor-grabbing"
+                      >
+                        <button
+                          onClick={() => node.onClick()}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors text-left"
+                        >
+                          <Icon className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="text-sm text-gray-300">{node.label}</span>
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    No nodes found
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
-        <button
-          onClick={createImageNode}
-          className="w-full flex items-center gap-3 px-4 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
-        >
-          <ImageIcon className="w-5 h-5 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Image Node</span>
-        </button>
-
-        <button
-          onClick={createLLMNode}
-          className="w-full flex items-center gap-3 px-4 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
-        >
-          <Sparkles className="w-5 h-5 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Run Any LLM Node</span>
-        </button>
+        {activeSection === "quick-access" && (
+          <>
+            <div className="p-4 ">
+              <h2 className="text-sm font-semibold text-gray-300">Quick access</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 max-h-[300px]">
+              <div className="grid grid-cols-2 gap-2">
+                {nodeButtons.map((node, index) => {
+                  const Icon = node.icon;
+                  return (
+                    <div
+                      key={index}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("application/reactflow", JSON.stringify({ type: node.type }));
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      className="cursor-grab active:cursor-grabbing"
+                    >
+                      <button
+                        onClick={() => node.onClick()}
+                        className="flex flex-col items-center justify-center gap-2 p-4 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors aspect-square w-full"
+                      >
+                        <Icon className="w-6 h-6 text-gray-400" />
+                        <span className="text-xs text-gray-300 text-center">{node.label}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
-

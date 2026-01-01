@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import ReactFlow, {
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   ReactFlowProvider,
+  ReactFlowInstance,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
-import Sidebar from "@/components/Sidebar";
+import Sidebar, { SecondarySidebar, SidebarProvider } from "@/components/Sidebar";
 import Toolbar from "@/components/Toolbar";
 import TextNode from "@/components/nodes/TextNode";
 import ImageNode from "@/components/nodes/ImageNode";
@@ -23,7 +25,7 @@ const nodeTypes = {
 
 const edgeOptions = {
   animated: true,
-  style: { stroke: "#9333ea" }, // Purple color
+  style: { stroke: "#22c55e" }, // Green color to match Weavy.ai
 };
 
 function WorkflowCanvas() {
@@ -33,8 +35,10 @@ function WorkflowCanvas() {
     onNodesChange,
     onEdgesChange,
     onConnect,
+    addNode,
   } = useWorkflowStore();
-
+  const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -52,24 +56,103 @@ function WorkflowCanvas() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nodes]);
 
+  const onDragOver = React.useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const onDrop = React.useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
+      const data = event.dataTransfer.getData("application/reactflow");
+
+      if (typeof data === "undefined" || !data) {
+        return;
+      }
+
+      try {
+        const nodeData = JSON.parse(data);
+        const type = nodeData.type;
+
+        if (typeof type === "undefined" || !type) {
+          return;
+        }
+
+        if (reactFlowBounds && reactFlowInstance) {
+          const position = reactFlowInstance.project({
+            x: event.clientX - reactFlowBounds.left,
+            y: event.clientY - reactFlowBounds.top,
+          });
+
+          let newNode;
+          if (type === "text") {
+            newNode = {
+              id: `text-${Date.now()}`,
+              type: "text",
+              position,
+              data: { text: "" },
+            };
+          } else if (type === "image") {
+            newNode = {
+              id: `image-${Date.now()}`,
+              type: "image",
+              position,
+              data: {},
+            };
+          } else if (type === "llm") {
+            newNode = {
+              id: `llm-${Date.now()}`,
+              type: "llm",
+              position,
+              data: {
+                model: "gemini-2.5-flash",
+                systemPrompt: "",
+                userMessage: "",
+                output: "",
+              },
+            };
+          } else {
+            return;
+          }
+
+          addNode(newNode);
+        }
+      } catch (error) {
+        console.error("Error parsing drag data:", error);
+      }
+    },
+    [reactFlowInstance, addNode]
+  );
+
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full bg-[#0a0a0a]" ref={reactFlowWrapper}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onInit={setReactFlowInstance}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={edgeOptions}
         fitView
         attributionPosition="bottom-left"
       >
-        <Background gap={20} size={1} />
+        <Background 
+          variant={BackgroundVariant.Dots}
+          gap={30} 
+          size={0.8} 
+          color="#ced9d8"
+          style={{ backgroundColor: "#0E0E13" }}
+        />
         <Controls />
         <MiniMap
-          nodeColor="#9333ea"
-          maskColor="rgba(0, 0, 0, 0.1)"
+          nodeColor="#22c55e"
+          maskColor="rgba(0, 0, 0, 0.5)"
           position="bottom-right"
         />
       </ReactFlow>
@@ -79,13 +162,20 @@ function WorkflowCanvas() {
 
 export default function Home() {
   return (
-    <div className="flex h-screen w-full bg-gray-100">
+    <div className="flex flex-col h-screen w-full bg-[#0a0a0a]">
       <ReactFlowProvider>
-        <Sidebar />
-        <div className="flex-1 relative">
-          <WorkflowCanvas />
-          <Toolbar reactFlowInstance={null} />
-        </div>
+        <SidebarProvider>
+          <div className="flex flex-1 overflow-hidden">
+            <Sidebar />
+            <div className="flex-1 relative flex flex-col">
+              <SecondarySidebar />
+              <div className="flex-1 relative">
+                <WorkflowCanvas />
+                <Toolbar reactFlowInstance={null} />
+              </div>
+            </div>
+          </div>
+        </SidebarProvider>
       </ReactFlowProvider>
     </div>
   );

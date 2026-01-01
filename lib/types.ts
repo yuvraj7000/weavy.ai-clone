@@ -6,13 +6,8 @@ export type NodeType = "text" | "image" | "llm";
 // LLM Request Schema
 export const LLMExecuteSchema = z.object({
   model: z.enum([
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-001',
-    'gemini-2.0-flash-lite',
-    'gemini-2.0-flash-lite-001',
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-2.5-pro'
   ]).default("gemini-2.5-flash"),
   systemPrompt: z.string().optional(),
   userMessage: z.string().min(1, "User message is required"),
