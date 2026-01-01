@@ -47,18 +47,60 @@ body {
 
 .react-flow__controls {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  background-color: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background-color: #353539;
+  border: 1px solid #5C5C5F;
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  position: absolute !important;
+  bottom: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  right: auto !important;
+  top: auto !important;
 }
 
 .react-flow__controls button {
-  background-color: #1a1a1a;
-  border-bottom: 1px solid #2a2a2a;
-  color: #9ca3af;
+  background-color: transparent;
+  border: 1px solid #5C5C5F;
+  border-radius: 6px;
+  color: white;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  transition: all 0.2s ease;
+}
+
+/* Control icon colors */
+.react-flow__controls button svg {
+  fill: white;
+  stroke: white;
+  color: white;
 }
 
 .react-flow__controls button:hover {
+  background-color: #3d3d42;
+  border-color: #7a7a7d;
+}
+
+.react-flow__controls button:hover svg {
+  fill: #ffffff;
+  stroke: #ffffff;
+}
+
+.react-flow__controls button:active {
   background-color: #2a2a2a;
+}
+
+.react-flow__controls button:active svg {
+  fill: #ffffff;
+  stroke: #ffffff;
 }
 
 .react-flow__minimap {

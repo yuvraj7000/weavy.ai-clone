@@ -1,24 +1,29 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { useToast } from "@/components/Toast";
+import Modal from "@/components/Modal";
 import {
   Undo2,
   Redo2,
   Save,
-  FolderOpen,
+  Eraser,
   Download,
   Upload,
-  Trash2,
+  X,
 } from "lucide-react";
-interface ToolbarProps {
-  reactFlowInstance?: unknown;
-}
 
-export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
+export default function Toolbar() {
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [workflowName, setWorkflowName] = useState("");
+  const { showToast } = useToast();
   const {
     nodes,
     edges,
+    workflowName: currentWorkflowName,
+    workflowId,
     undo,
     redo,
     canUndo,
@@ -27,125 +32,6 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
     clearWorkflow,
   } = useWorkflowStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSave = useCallback(async () => {
-    const name = prompt("Enter workflow name:");
-    if (!name) return;
-
-    try {
-      // Find all image nodes with base64 data that need to be uploaded
-      const imageNodes = nodes.filter(
-        (node) => node.type === "image" && node.data?.imageBase64 && !node.data?.imageUrl
-      );
-
-      // Upload images to Cloudinary
-      const updatedNodes = [...nodes];
-      for (const imageNode of imageNodes) {
-        try {
-          const base64Data = imageNode.data.imageBase64 as string;
-          // Extract raw base64 (remove data URI prefix)
-          const base64WithoutPrefix = base64Data.includes(",")
-            ? base64Data.split(",")[1]
-            : base64Data;
-
-          const formData = new FormData();
-          formData.append("base64", base64WithoutPrefix);
-
-          const uploadResponse = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
-
-          const uploadResult = await uploadResponse.json();
-
-          if (uploadResult.success) {
-            // Update the node with Cloudinary URL
-            const nodeIndex = updatedNodes.findIndex((n) => n.id === imageNode.id);
-            if (nodeIndex !== -1) {
-              updatedNodes[nodeIndex] = {
-                ...updatedNodes[nodeIndex],
-                data: {
-                  ...updatedNodes[nodeIndex].data,
-                  imageUrl: uploadResult.data.url,
-                  imageBase64: undefined, // Clear base64 after upload
-                },
-              };
-            }
-          } else {
-            console.error(`Failed to upload image for node ${imageNode.id}:`, uploadResult.error);
-          }
-        } catch (error) {
-          console.error(`Error uploading image for node ${imageNode.id}:`, error);
-        }
-      }
-
-      // Update the store with uploaded images
-      updatedNodes.forEach((node) => {
-        if (node.type === "image" && node.data?.imageUrl) {
-          useWorkflowStore.getState().updateNodeData(node.id, {
-            imageUrl: node.data.imageUrl,
-            imageBase64: undefined,
-          });
-        }
-      });
-
-      // Save workflow with updated nodes
-      const response = await fetch("/api/workflows", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          nodes: updatedNodes,
-          edges,
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        alert("Workflow saved successfully!");
-      } else {
-        alert(`Error: ${result.error}`);
-      }
-    } catch (error) {
-      console.error("Error saving workflow:", error);
-      alert("Failed to save workflow");
-    }
-  }, [nodes, edges]);
-
-  const handleLoad = useCallback(async () => {
-    try {
-      const response = await fetch("/api/workflows");
-      const result = await response.json();
-
-      if (result.success && result.data.length > 0) {
-        const workflowNames = result.data.map(
-          (w: { id: string; name: string }) => `${w.id} - ${w.name}`
-        );
-        const selected = prompt(
-          `Enter workflow ID to load:\n\n${workflowNames.join("\n")}`
-        );
-        if (!selected) return;
-
-        const workflow = result.data.find(
-          (w: { id: string; name: string }) => w.id === selected || w.id === selected.split(" - ")[0]
-        );
-
-        if (workflow) {
-          loadWorkflow(workflow.nodes, workflow.edges);
-          alert("Workflow loaded successfully!");
-        } else {
-          alert("Workflow not found");
-        }
-      } else {
-        alert("No workflows found");
-      }
-    } catch (error) {
-      console.error("Error loading workflows:", error);
-      alert("Failed to load workflows");
-    }
-  }, [loadWorkflow]);
 
   const handleExport = useCallback(() => {
     const data = { nodes, edges };
@@ -174,91 +60,290 @@ export default function Toolbar({ reactFlowInstance: _ }: ToolbarProps) {
         try {
           const data = JSON.parse(reader.result as string);
           if (data.nodes && data.edges) {
-            loadWorkflow(data.nodes, data.edges);
-            alert("Workflow imported successfully!");
+            loadWorkflow(data.nodes, data.edges, data.name || "");
+            showToast("Workflow imported successfully!", "success");
           } else {
-            alert("Invalid workflow file");
+            showToast("Invalid workflow file", "error");
           }
         } catch (error) {
           console.error("Error importing workflow:", error);
-          alert("Failed to import workflow");
+          showToast("Failed to import workflow", "error");
         }
       };
       reader.readAsText(file);
     },
-    [loadWorkflow]
+    [loadWorkflow, showToast]
   );
 
-  const handleClear = useCallback(() => {
-    if (confirm("Are you sure you want to clear the workflow?")) {
-      clearWorkflow();
+  const handleSaveClick = useCallback(() => {
+    // If workflow name exists, just show confirmation modal
+    // Otherwise, show input modal
+    if (currentWorkflowName) {
+      setShowSaveModal(true);
+    } else {
+      setShowSaveModal(true);
     }
-  }, [clearWorkflow]);
+  }, [currentWorkflowName]);
+
+  const handleSaveConfirm = useCallback(async () => {
+    // Use current workflow name if it exists, otherwise use input value
+    const nameToSave = currentWorkflowName || workflowName.trim();
+    
+    if (!nameToSave) {
+      showToast("Please enter a workflow name", "error");
+      return;
+    }
+
+    try {
+      const imageNodes = nodes.filter(
+        (node) => node.type === "image" && node.data?.imageBase64 && !node.data?.imageUrl
+      );
+
+      const updatedNodes = [...nodes];
+      for (const imageNode of imageNodes) {
+        try {
+          const base64Data = imageNode.data.imageBase64 as string;
+          const base64WithoutPrefix = base64Data.includes(",")
+            ? base64Data.split(",")[1]
+            : base64Data;
+
+          const formData = new FormData();
+          formData.append("base64", base64WithoutPrefix);
+
+          const uploadResponse = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const uploadResult = await uploadResponse.json();
+
+          if (uploadResult.success) {
+            const nodeIndex = updatedNodes.findIndex((n) => n.id === imageNode.id);
+            if (nodeIndex !== -1) {
+              updatedNodes[nodeIndex] = {
+                ...updatedNodes[nodeIndex],
+                data: {
+                  ...updatedNodes[nodeIndex].data,
+                  imageUrl: uploadResult.data.url,
+                  imageBase64: undefined,
+                },
+              };
+            }
+          } else {
+            showToast(`Failed to upload image: ${uploadResult.error}`, "error");
+          }
+        } catch (error) {
+          console.error(`Error uploading image for node ${imageNode.id}:`, error);
+          showToast("Failed to upload image", "error");
+        }
+      }
+
+      updatedNodes.forEach((node) => {
+        if (node.type === "image" && node.data?.imageUrl) {
+          useWorkflowStore.getState().updateNodeData(node.id, {
+            imageUrl: node.data.imageUrl,
+            imageBase64: undefined,
+          });
+        }
+      });
+
+      // Use PUT to update if workflowId exists, otherwise POST to create new
+      const method = workflowId ? "PUT" : "POST";
+      const url = workflowId ? `/api/workflows?id=${workflowId}` : "/api/workflows";
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: workflowId || undefined,
+          name: nameToSave,
+          nodes: updatedNodes,
+          edges,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        useWorkflowStore.getState().setWorkflowName(nameToSave);
+        // Update workflowId if it was a new workflow
+        if (result.data?.id && !workflowId) {
+          useWorkflowStore.getState().setWorkflowId(result.data.id);
+        }
+        showToast(workflowId ? "Workflow updated successfully!" : "Workflow saved successfully!", "success");
+        setWorkflowName("");
+      } else {
+        showToast(`Error: ${result.error}`, "error");
+      }
+    } catch (error) {
+      console.error("Error saving workflow:", error);
+      showToast("Failed to save workflow", "error");
+    }
+  }, [nodes, edges, workflowName, workflowId, currentWorkflowName, showToast]);
+
+
+  const handleClearClick = useCallback(() => {
+    setShowDeleteModal(true);
+  }, []);
+
+  const handleClearConfirm = useCallback(() => {
+    clearWorkflow();
+    showToast("Workflow cleared successfully!", "success");
+  }, [clearWorkflow, showToast]);
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg p-2">
-      <button
-        onClick={undo}
-        disabled={!canUndo()}
-        className="p-2 hover:bg-[#2a2a2a] rounded disabled:opacity-50 disabled:cursor-not-allowed text-gray-400"
-        title="Undo"
-      >
-        <Undo2 className="w-4 h-4" />
-      </button>
-      <button
-        onClick={redo}
-        disabled={!canRedo()}
-        className="p-2 hover:bg-[#2a2a2a] rounded disabled:opacity-50 disabled:cursor-not-allowed text-gray-400"
-        title="Redo"
-      >
-        <Redo2 className="w-4 h-4" />
-      </button>
-      <div className="w-px h-6 bg-[#2a2a2a]" />
-      <button
-        onClick={handleSave}
-        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
-        title="Save Workflow"
-      >
-        <Save className="w-4 h-4" />
-      </button>
-      <button
-        onClick={handleLoad}
-        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
-        title="Load Workflow"
-      >
-        <FolderOpen className="w-4 h-4" />
-      </button>
-      <div className="w-px h-6 bg-[#2a2a2a]" />
-      <button
-        onClick={handleExport}
-        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
-        title="Export JSON"
-      >
-        <Download className="w-4 h-4" />
-      </button>
-      <button
-        onClick={handleImport}
-        className="p-2 hover:bg-[#2a2a2a] rounded text-gray-400"
-        title="Import JSON"
-      >
-        <Upload className="w-4 h-4" />
-      </button>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json"
-        onChange={handleFileImport}
-        className="hidden"
-      />
-      <div className="w-px h-6 bg-[#2a2a2a]" />
-      <button
-        onClick={handleClear}
-        className="p-2 hover:bg-red-900 rounded text-red-400"
+    <>
+      {/* Top Center: Save, Load, Delete, Undo, Redo, Export, Import */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-[#353539] border border-[#5C5C5F] rounded-lg shadow-lg p-1.5">
+        <button
+          onClick={handleSaveClick}
+          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
+          title="Save Workflow"
+        >
+          <Save className="w-4 h-4" />
+        </button>
+        <button
+          onClick={handleClearClick}
+          className="px-3 py-1.5 hover:bg-red-900/20 rounded text-red-400 text-sm transition-colors border border-transparent hover:border-red-700"
+          title="Clear Workflow"
+        >
+          <Eraser className="w-4 h-4" />
+        </button>
+        <div className="w-px h-6 bg-[#5C5C5F]" />
+        <button
+          onClick={undo}
+          disabled={!canUndo()}
+          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
+          title="Undo"
+        >
+          <Undo2 className="w-4 h-4" />
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo()}
+          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
+          title="Redo"
+        >
+          <Redo2 className="w-4 h-4" />
+        </button>
+        <div className="w-px h-6 bg-[#5C5C5F]" />
+        <button
+          onClick={handleExport}
+          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
+          title="Export JSON"
+        >
+          <Download className="w-4 h-4" />
+        </button>
+        <button
+          onClick={handleImport}
+          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
+          title="Import JSON"
+        >
+          <Upload className="w-4 h-4" />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleFileImport}
+          className="hidden"
+        />
+      </div>
+
+      {/* Save Modal */}
+      {showSaveModal && (
+        <>
+          {currentWorkflowName ? (
+            // Confirmation modal when workflow name exists
+            <Modal
+              isOpen={showSaveModal}
+              onClose={() => setShowSaveModal(false)}
+              onConfirm={handleSaveConfirm}
+              title="Save Workflow"
+              message={`Are you sure you want to save the workflow "${currentWorkflowName}"?`}
+              confirmText="Save"
+              cancelText="Cancel"
+              confirmButtonColor="bg-blue-600 hover:bg-blue-700"
+            />
+          ) : (
+            // Input modal when no workflow name exists
+            <div className="fixed inset-0 z-[100] flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setWorkflowName("");
+                }}
+              />
+              <div className="relative z-10 bg-[#212126] border border-[#302e33] rounded-lg shadow-xl w-full max-w-md mx-4">
+                <div className="flex items-center justify-between p-4 border-b border-[#302e33]">
+                  <h2 className="text-lg font-semibold text-gray-300">Save Workflow</h2>
+                  <button
+                    onClick={() => {
+                      setShowSaveModal(false);
+                      setWorkflowName("");
+                    }}
+                    className="p-1 rounded hover:bg-[#353539] text-gray-400 hover:text-gray-300 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-4">
+                  <p className="text-sm text-gray-400 mb-3">Enter a name for your workflow:</p>
+                  <input
+                    type="text"
+                    value={workflowName}
+                    onChange={(e) => setWorkflowName(e.target.value)}
+                    placeholder="Workflow name"
+                    className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#302e33] rounded text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-[#7a7a7d]"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && workflowName.trim()) {
+                        handleSaveConfirm();
+                        setShowSaveModal(false);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-3 p-4 border-t border-[#302e33]">
+                  <button
+                    onClick={() => {
+                      setShowSaveModal(false);
+                      setWorkflowName("");
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#353539] border border-[#454549] rounded hover:bg-[#3d3d42] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSaveConfirm();
+                      setShowSaveModal(false);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Delete Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleClearConfirm}
         title="Clear Workflow"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
-    </div>
+        message="Are you sure you want to clear the current workflow? This action cannot be undone."
+        confirmText="Clear"
+        cancelText="Cancel"
+        confirmButtonColor="bg-red-600 hover:bg-red-700"
+      />
+    </>
   );
 }
 

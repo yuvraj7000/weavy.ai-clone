@@ -13,7 +13,8 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
-import Sidebar, { SecondarySidebar, SidebarProvider } from "@/components/Sidebar";
+import { useToast } from "@/components/Toast";
+import Sidebar, { SecondarySidebar, SidebarProvider, useSidebarContext } from "@/components/Sidebar";
 import Toolbar from "@/components/Toolbar";
 import TextNode from "@/components/nodes/TextNode";
 import ImageNode from "@/components/nodes/ImageNode";
@@ -41,6 +42,7 @@ function WorkflowCanvas() {
     setEdges,
     addNode,
   } = useWorkflowStore();
+  const { showToast } = useToast();
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
@@ -176,11 +178,12 @@ function WorkflowCanvas() {
         };
         const updatedEdges = addEdge(newEdge, edges);
         setEdges(updatedEdges);
+        showToast("Connection created successfully!", "success");
       } else {
-        alert("Invalid connection! Use: prompt->prompt, result->input, or image->image");
+        showToast("Invalid connection! Use: prompt->prompt, result->input, or image->image", "error");
       }
     },
-    [nodes, edges, setEdges]
+    [nodes, edges, setEdges, showToast]
   );
 
   return (
@@ -206,13 +209,88 @@ function WorkflowCanvas() {
           color="#ced9d8"
           style={{ backgroundColor: "#0E0E13" }}
         />
-        <Controls />
-        <MiniMap
-          nodeColor="#22c55e"
-          maskColor="rgba(0, 0, 0, 0.5)"
-          position="bottom-right"
-        />
+        <Controls position="bottom-center" className="-translate-x-1/4" />
+            <MiniMap
+              nodeColor="#a855f7"
+              maskColor="rgba(0, 0, 0, 0.5)"
+              position="bottom-right"
+            />
       </ReactFlow>
+    </div>
+  );
+}
+
+function WorkflowCanvasWrapper() {
+  const { activeSection } = useSidebarContext();
+  const workflowName = useWorkflowStore((state) => state.workflowName);
+  const setWorkflowName = useWorkflowStore((state) => state.setWorkflowName);
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editValue, setEditValue] = React.useState(workflowName || "Untitled Workflow");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setEditValue(workflowName || "Untitled Workflow");
+  }, [workflowName]);
+
+  React.useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleBlur = () => {
+    const trimmedValue = editValue.trim();
+    if (trimmedValue) {
+      setWorkflowName(trimmedValue);
+    } else {
+      setEditValue(workflowName || "Untitled Workflow");
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleBlur();
+    } else if (e.key === "Escape") {
+      setEditValue(workflowName || "Untitled Workflow");
+      setIsEditing(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 relative">
+      {/* Workflow Name - shown when sidebar is closed */}
+      {!activeSection && (
+        <div className="absolute top-0 left-0 z-40 py-4 h-18 flex items-center justify-center text-sm font-semibold text-gray-300 w-64 text-center">
+          <div className="px-4 py-2 bg-[#1a1a1a] border border-[#302e33] rounded-md">
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleBlur}
+                onKeyDown={handleKeyDown}
+                className="bg-transparent border-none outline-none text-sm font-semibold text-gray-300 w-full text-center focus:outline-none"
+              />
+            ) : (
+              <span
+                onDoubleClick={handleDoubleClick}
+                className="cursor-text select-none"
+                title="Double-click to edit"
+              >
+                {workflowName || "Untitled Workflow"}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      <WorkflowCanvas />
     </div>
   );
 }
@@ -224,12 +302,10 @@ export default function Home() {
         <SidebarProvider>
           <div className="flex flex-1 overflow-hidden">
             <Sidebar />
+            <Toolbar />
             <div className="flex-1 relative flex flex-col">
               <SecondarySidebar />
-              <div className="flex-1 relative">
-                <WorkflowCanvas />
-                <Toolbar reactFlowInstance={null} />
-              </div>
+              <WorkflowCanvasWrapper />
             </div>
           </div>
         </SidebarProvider>

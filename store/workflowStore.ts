@@ -4,12 +4,16 @@ import { Node, Edge, Connection, addEdge, applyNodeChanges, applyEdgeChanges, No
 interface WorkflowState {
   nodes: Node[];
   edges: Edge[];
+  workflowName: string;
+  workflowId: string | null;
   history: { nodes: Node[]; edges: Edge[] }[];
   historyIndex: number;
   
   // Actions
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
+  setWorkflowName: (name: string) => void;
+  setWorkflowId: (id: string | null) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
@@ -25,18 +29,22 @@ interface WorkflowState {
   canRedo: () => boolean;
   
   // Workflow management
-  loadWorkflow: (nodes: Node[], edges: Edge[]) => void;
+  loadWorkflow: (nodes: Node[], edges: Edge[], name?: string, id?: string) => void;
   clearWorkflow: () => void;
 }
 
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: [],
   edges: [],
+  workflowName: "",
+  workflowId: null,
   history: [],
   historyIndex: -1,
 
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
+  setWorkflowName: (name) => set({ workflowName: name }),
+  setWorkflowId: (id) => set({ workflowId: id }),
 
   onNodesChange: (changes) => {
     set({
@@ -128,23 +136,27 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     return historyIndex < history.length - 1;
   },
 
-  loadWorkflow: (nodes, edges) => {
-    set({
-      nodes,
-      edges,
-      history: [{ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }],
-      historyIndex: 0,
-    });
-  },
+      loadWorkflow: (nodes, edges, name, id) => {
+        set({
+          nodes,
+          edges,
+          workflowName: name || "",
+          workflowId: id || null,
+          history: [{ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }],
+          historyIndex: 0,
+        });
+      },
 
-  clearWorkflow: () => {
-    const emptyState = { nodes: [], edges: [] };
-    set({
-      nodes: [],
-      edges: [],
-      history: [emptyState],
-      historyIndex: 0,
-    });
-  },
+      clearWorkflow: () => {
+        const emptyState = { nodes: [], edges: [] };
+        set({
+          nodes: [],
+          edges: [],
+          workflowName: "",
+          workflowId: null,
+          history: [emptyState],
+          historyIndex: 0,
+        });
+      },
 }));
 

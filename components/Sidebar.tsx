@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useCallback, useState, createContext, useContext } from "react";
+import React, { useCallback, useState, createContext, useContext, useEffect } from "react";
 import { useWorkflowStore } from "@/store/workflowStore";
-import { Type, Image as ImageIcon, Sparkles, Search, Zap, Workflow } from "lucide-react";
+import { useToast } from "@/components/Toast";
+import Modal from "@/components/Modal";
+import { Type, Image as ImageIcon, Sparkles, Search, Zap, Workflow, FolderOpen, Trash2 } from "lucide-react";
 
 const SidebarContext = createContext<{
-  activeSection: "search" | "quick-access" | null;
-  setActiveSection: (section: "search" | "quick-access" | null) => void;
+  activeSection: "search" | "quick-access" | "workflows" | null;
+  setActiveSection: (section: "search" | "quick-access" | "workflows" | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 } | null>(null);
@@ -22,7 +24,7 @@ export function useSidebarContext() {
 export { SidebarProvider };
 
 function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [activeSection, setActiveSection] = useState<"search" | "quick-access" | null>(null);
+  const [activeSection, setActiveSection] = useState<"search" | "quick-access" | "workflows" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
@@ -35,40 +37,102 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
 function PrimarySidebar() {
   const context = useSidebarContext();
   const { activeSection, setActiveSection } = context;
+  const workflowId = useWorkflowStore((state) => state.workflowId);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { showToast } = useToast();
+  const clearWorkflow = useWorkflowStore((state) => state.clearWorkflow);
 
-  const toggleSection = (section: "search" | "quick-access") => {
+  const toggleSection = (section: "search" | "quick-access" | "workflows") => {
     setActiveSection(activeSection === section ? null : section);
   };
 
+  const handleDeleteWorkflow = useCallback(async () => {
+    if (!workflowId) return;
+
+    try {
+      const response = await fetch(`/api/workflows?id=${workflowId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        clearWorkflow();
+        showToast("Workflow deleted successfully!", "success");
+      } else {
+        showToast(`Error: ${result.error}`, "error");
+      }
+    } catch (error) {
+      console.error("Error deleting workflow:", error);
+      showToast("Failed to delete workflow", "error");
+    }
+  }, [workflowId, clearWorkflow, showToast]);
+
   return (
-    <div className="w-16 bg-[#212126] border-r border-[#302e33] flex flex-col items-center py-4">
-      <span className="w-12 h-12 flex items-center justify-center rounded-lg mb-6">
-        <Workflow className="w-4 h-4" />
-      </span>
-      <button
-        onClick={() => toggleSection("search")}
-        className={`w-12 h-12 flex items-center justify-center rounded-lg mb-2 transition-colors ${
-          activeSection === "search"
-            ? "bg-[#FAFFC7] text-black"
-            : "text-gray-400 hover:bg-[#1a1a1a] hover:text-gray-300"
-        }`}
-        title="Search"
-      >
-        <Search className="w-5 h-5" />
-      </button>
-      
-      <button
-        onClick={() => toggleSection("quick-access")}
-        className={`w-12 h-12 flex items-center justify-center rounded-lg transition-colors ${
-          activeSection === "quick-access"
-            ? "bg-[#FAFFC7] text-black"
-            : "text-gray-400 hover:bg-[#1a1a1a] hover:text-gray-300"
-        }`}
-        title="Quick Access"
-      >
-        <Zap className="w-5 h-5" />
-      </button>
-    </div>
+    <>
+      <div className="w-16 bg-[#212126] border-r border-[#302e33] flex flex-col items-center py-4">
+        <span className="w-12 h-12 flex items-center justify-center rounded-lg mb-6">
+          <Workflow className="w-4 h-4" />
+        </span>
+        <button
+          onClick={() => toggleSection("search")}
+          className={`w-12 h-12 flex items-center justify-center rounded-lg mb-2 transition-colors ${
+            activeSection === "search"
+              ? "bg-[#FAFFC7] text-black"
+              : "text-gray-400 hover:bg-[#353539] hover:text-gray-300"
+          }`}
+          title="Search"
+        >
+          <Search className="w-5 h-5" />
+        </button>
+        
+        <button
+          onClick={() => toggleSection("quick-access")}
+          className={`w-12 h-12 flex items-center justify-center rounded-lg mb-2 transition-colors ${
+            activeSection === "quick-access"
+              ? "bg-[#FAFFC7] text-black"
+              : "text-gray-400 hover:bg-[#353539] hover:text-gray-300"
+          }`}
+          title="Quick Access"
+        >
+          <Zap className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={() => toggleSection("workflows")}
+          className={`w-12 h-12 flex items-center justify-center rounded-lg mb-auto transition-colors ${
+            activeSection === "workflows"
+              ? "bg-[#FAFFC7] text-black"
+              : "text-gray-400 hover:bg-[#353539] hover:text-gray-300"
+          }`}
+          title="Load Workflow"
+        >
+          <FolderOpen className="w-5 h-5" />
+        </button>
+
+        {/* Delete Workflow Button - only visible if workflowId exists */}
+        {workflowId && (
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="w-12 h-12 flex items-center justify-center rounded-lg mt-auto transition-colors text-red-400 hover:bg-red-900/20 hover:text-red-300"
+            title="Delete Workflow"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Delete Workflow Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteWorkflow}
+        title="Delete Workflow"
+        message="Are you sure you want to delete this workflow? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonColor="bg-red-600 hover:bg-red-700"
+      />
+    </>
   );
 }
 
@@ -78,8 +142,111 @@ export default function Sidebar() {
 
 export function SecondarySidebar() {
   const context = useSidebarContext();
-  const { activeSection, searchQuery, setSearchQuery } = context;
+  const { activeSection, setActiveSection, searchQuery, setSearchQuery } = context;
   const addNode = useWorkflowStore((state) => state.addNode);
+  const loadWorkflow = useWorkflowStore((state) => state.loadWorkflow);
+  const workflowName = useWorkflowStore((state) => state.workflowName);
+  const setWorkflowName = useWorkflowStore((state) => state.setWorkflowName);
+  const [workflows, setWorkflows] = useState<Array<{ id: string; name: string; createdAt?: string; updatedAt?: string }>>([]);
+  const [loadingWorkflows, setLoadingWorkflows] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState(workflowName || "Untitled Workflow");
+  const nameInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setEditNameValue(workflowName || "Untitled Workflow");
+  }, [workflowName]);
+
+  React.useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  const handleNameDoubleClick = () => {
+    setIsEditingName(true);
+  };
+
+  const handleNameBlur = () => {
+    const trimmedValue = editNameValue.trim();
+    if (trimmedValue) {
+      setWorkflowName(trimmedValue);
+    } else {
+      setEditNameValue(workflowName || "Untitled Workflow");
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleNameBlur();
+    } else if (e.key === "Escape") {
+      setEditNameValue(workflowName || "Untitled Workflow");
+      setIsEditingName(false);
+    }
+  };
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
+  const { showToast } = useToast();
+
+  const fetchWorkflows = useCallback(async () => {
+    setLoadingWorkflows(true);
+    try {
+      const response = await fetch("/api/workflows");
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setWorkflows(result.data);
+      } else {
+        setWorkflows([]);
+      }
+    } catch (error) {
+      console.error("Error loading workflows:", error);
+      setWorkflows([]);
+    } finally {
+      setLoadingWorkflows(false);
+    }
+  }, []);
+
+  // Fetch workflows when workflows section is opened
+  useEffect(() => {
+    if (activeSection === "workflows") {
+      fetchWorkflows();
+    }
+  }, [activeSection, fetchWorkflows]);
+
+  const handleLoadWorkflowClick = useCallback((workflowId: string) => {
+    setSelectedWorkflow(workflowId);
+    setShowLoadModal(true);
+  }, []);
+
+  const handleLoadWorkflowConfirm = useCallback(async () => {
+    if (!selectedWorkflow) return;
+
+    try {
+      const response = await fetch("/api/workflows");
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const workflow = result.data.find((w: { id: string }) => w.id === selectedWorkflow);
+        if (workflow) {
+          loadWorkflow(workflow.nodes, workflow.edges, workflow.name, workflow.id);
+          showToast("Workflow loaded successfully!", "success");
+          setActiveSection(null); // Close sidebar after loading
+        } else {
+          showToast("Workflow not found", "error");
+        }
+      } else {
+        showToast("No workflows found", "error");
+      }
+    } catch (error) {
+      console.error("Error loading workflow:", error);
+      showToast("Failed to load workflow", "error");
+    } finally {
+      setSelectedWorkflow(null);
+    }
+  }, [selectedWorkflow, loadWorkflow, setActiveSection, showToast]);
 
   const createTextNode = useCallback((position?: { x: number; y: number }) => {
     const newNode = {
@@ -140,7 +307,25 @@ export function SecondarySidebar() {
       <div className={`py-4 h-18 flex items-center justify-center text-sm font-semibold text-gray-300 w-full text-center border-b border-[#302e33] transition-opacity duration-200 ease-in-out ${
         activeSection ? "opacity-100 delay-100" : "opacity-0 delay-0"
       }`}>
-        workFlow Name
+        {isEditingName ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={editNameValue}
+            onChange={(e) => setEditNameValue(e.target.value)}
+            onBlur={handleNameBlur}
+            onKeyDown={handleNameKeyDown}
+            className="bg-[#1a1a1a] border border-[#302e33] rounded-md px-4 py-2 text-sm font-semibold text-gray-300 text-center focus:outline-none focus:border-[#7a7a7d] w-[90%]"
+          />
+        ) : (
+          <span
+            onDoubleClick={handleNameDoubleClick}
+            className="cursor-text select-none px-4 py-2"
+            title="Double-click to edit"
+          >
+            {workflowName || "Untitled Workflow"}
+          </span>
+        )}
       </div>
       <div className={`min-w-64 transition-all duration-200 ease-in-out ${
         activeSection ? "opacity-100 translate-y-0 delay-150" : "opacity-0 translate-y-2 delay-0"
@@ -229,7 +414,58 @@ export function SecondarySidebar() {
             </div>
           </>
         )}
+
+        {activeSection === "workflows" && (
+          <>
+            <div className="p-4">
+              <h2 className="text-sm font-semibold text-gray-300 "> Use Workflows</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingWorkflows ? (
+                <div className="text-sm text-gray-500 text-center py-4">
+                  Loading workflows...
+                </div>
+              ) : workflows.length > 0 ? (
+                <div className="space-y-2">
+                  {workflows.map((workflow) => (
+                    <button
+                      key={workflow.id}
+                      onClick={() => handleLoadWorkflowClick(workflow.id)}
+                      className="w-full flex flex-col items-start gap-1 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors text-left"
+                    >
+                      <span className="text-sm text-gray-300 font-medium">{workflow.name}</span>
+                      {workflow.updatedAt && (
+                        <span className="text-xs text-gray-500">
+                          Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 text-center py-4">
+                  No workflows found
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Load Workflow Modal */}
+      <Modal
+        isOpen={showLoadModal}
+        onClose={() => {
+          setShowLoadModal(false);
+          setSelectedWorkflow(null);
+        }}
+        onConfirm={handleLoadWorkflowConfirm}
+        title="Load Workflow"
+        message="Are you sure you want to load this workflow? This will replace your current workflow."
+        confirmText="Load"
+        cancelText="Cancel"
+        confirmButtonColor="bg-blue-600 hover:bg-blue-700"
+      />
     </div>
   );
 }
