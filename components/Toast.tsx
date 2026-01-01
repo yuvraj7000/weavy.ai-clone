@@ -63,13 +63,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const getToastColors = (type: ToastType) => {
     switch (type) {
       case "success":
-        return "bg-green-900/20 border-green-700/50";
+        return "bg-green-900 border-green-700";
       case "error":
-        return "bg-red-900/20 border-red-700/50";
+        return "bg-red-900 border-red-700";
       case "warning":
-        return "bg-yellow-900/20 border-yellow-700/50";
+        return "bg-yellow-900 border-yellow-700";
       case "info":
-        return "bg-blue-900/20 border-blue-700/50";
+        return "bg-blue-900 border-blue-700";
     }
   };
 

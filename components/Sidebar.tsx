@@ -4,7 +4,7 @@ import React, { useCallback, useState, createContext, useContext, useEffect } fr
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useToast } from "@/components/Toast";
 import Modal from "@/components/Modal";
-import { Type, Image as ImageIcon, Sparkles, Search, Zap, Workflow, FolderOpen, Trash2 } from "lucide-react";
+import { Type, Image as ImageIcon, Sparkles, Search, Zap, Workflow, FolderOpen, Trash2, ArrowRight } from "lucide-react";
 
 const SidebarContext = createContext<{
   activeSection: "search" | "quick-access" | "workflows" | null;
@@ -24,7 +24,7 @@ export function useSidebarContext() {
 export { SidebarProvider };
 
 function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [activeSection, setActiveSection] = useState<"search" | "quick-access" | "workflows" | null>(null);
+  const [activeSection, setActiveSection] = useState<"search" | "quick-access" | "workflows" | null>("workflows");
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
@@ -186,8 +186,6 @@ export function SecondarySidebar() {
       setIsEditingName(false);
     }
   };
-  const [showLoadModal, setShowLoadModal] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
   const { showToast } = useToast();
 
   const fetchWorkflows = useCallback(async () => {
@@ -216,20 +214,13 @@ export function SecondarySidebar() {
     }
   }, [activeSection, fetchWorkflows]);
 
-  const handleLoadWorkflowClick = useCallback((workflowId: string) => {
-    setSelectedWorkflow(workflowId);
-    setShowLoadModal(true);
-  }, []);
-
-  const handleLoadWorkflowConfirm = useCallback(async () => {
-    if (!selectedWorkflow) return;
-
+  const handleLoadWorkflowClick = useCallback(async (workflowId: string) => {
     try {
       const response = await fetch("/api/workflows");
       const result = await response.json();
 
       if (result.success && result.data) {
-        const workflow = result.data.find((w: { id: string }) => w.id === selectedWorkflow);
+        const workflow = result.data.find((w: { id: string }) => w.id === workflowId);
         if (workflow) {
           loadWorkflow(workflow.nodes, workflow.edges, workflow.name, workflow.id);
           showToast("Workflow loaded successfully!", "success");
@@ -243,10 +234,8 @@ export function SecondarySidebar() {
     } catch (error) {
       console.error("Error loading workflow:", error);
       showToast("Failed to load workflow", "error");
-    } finally {
-      setSelectedWorkflow(null);
     }
-  }, [selectedWorkflow, loadWorkflow, setActiveSection, showToast]);
+  }, [loadWorkflow, setActiveSection, showToast]);
 
   const createTextNode = useCallback((position?: { x: number; y: number }) => {
     const newNode = {
@@ -431,14 +420,17 @@ export function SecondarySidebar() {
                     <button
                       key={workflow.id}
                       onClick={() => handleLoadWorkflowClick(workflow.id)}
-                      className="w-full flex flex-col items-start gap-1 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors text-left"
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors text-left group"
                     >
-                      <span className="text-sm text-gray-300 font-medium">{workflow.name}</span>
-                      {workflow.updatedAt && (
-                        <span className="text-xs text-gray-500">
-                          Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
-                        </span>
-                      )}
+                      <div className="flex flex-col items-start gap-1 flex-1">
+                        <span className="text-sm text-gray-300 font-medium">{workflow.name}</span>
+                        {workflow.updatedAt && (
+                          <span className="text-xs text-gray-500">
+                            Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -452,20 +444,6 @@ export function SecondarySidebar() {
         )}
       </div>
 
-      {/* Load Workflow Modal */}
-      <Modal
-        isOpen={showLoadModal}
-        onClose={() => {
-          setShowLoadModal(false);
-          setSelectedWorkflow(null);
-        }}
-        onConfirm={handleLoadWorkflowConfirm}
-        title="Load Workflow"
-        message="Are you sure you want to load this workflow? This will replace your current workflow."
-        confirmText="Load"
-        cancelText="Cancel"
-        confirmButtonColor="bg-blue-600 hover:bg-blue-700"
-      />
     </div>
   );
 }

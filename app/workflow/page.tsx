@@ -45,6 +45,51 @@ function WorkflowCanvas() {
   const { showToast } = useToast();
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+  const hasInitialized = React.useRef(false);
+  const isMounted = React.useRef(false);
+
+  // Initialize default nodes on first load (client-side only)
+  useEffect(() => {
+    // Mark as mounted on client side
+    isMounted.current = true;
+    
+    if (!hasInitialized.current && nodes.length === 0) {
+      // Use a stable timestamp to avoid hydration issues
+      const timestamp = Date.now();
+      const defaultNodes = [
+        {
+          id: `text-${timestamp}`,
+          type: "text",
+          position: { x: 300, y: 200 },
+          data: { text: "" },
+        },
+        {
+          id: `image-${timestamp + 1}`,
+          type: "image",
+          position: { x: 350, y: 900 },
+          data: {},
+        },
+        {
+          id: `llm-${timestamp + 2}`,
+          type: "llm",
+          position: { x: 900, y: 200 },
+          data: {
+            model: "gemini-2.5-flash",
+            systemPrompt: "",
+            userMessage: "",
+            output: "",
+          },
+        },
+      ];
+      
+      defaultNodes.forEach((node) => {
+        addNode(node);
+      });
+      
+      hasInitialized.current = true;
+    }
+  }, [nodes.length, addNode]);
+
 
   // Keyboard shortcuts
   useEffect(() => {
