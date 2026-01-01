@@ -68,3 +68,26 @@ body {
   background-color: #1a1a1a;
   border: 1px solid #2a2a2a;
 }
+
+/* Custom dropdown styles */
+select {
+  transition: all 0.2s ease;
+}
+
+select:hover:not(:disabled) {
+  background-color: #3d3d42;
+}
+
+select:focus {
+  outline: none;
+}
+
+select option {
+  background-color: #353539;
+  color: white;
+  padding: 8px;
+}
+
+select option:hover {
+  background-color: #3d3d42;
+}

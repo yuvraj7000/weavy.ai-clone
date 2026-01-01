@@ -8,6 +8,8 @@ import ReactFlow, {
   MiniMap,
   ReactFlowProvider,
   ReactFlowInstance,
+  Connection,
+  addEdge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
@@ -23,9 +25,11 @@ const nodeTypes = {
   llm: LLMNode,
 };
 
-const edgeOptions = {
-  animated: true,
-  style: { stroke: "#22c55e" }, // Green color to match Weavy.ai
+// Connection type colors
+const CONNECTION_COLORS = {
+  prompt: "#FFA500", // Orange for prompt connections
+  result: "#3b82f6", // Blue for result->input connections
+  image: "#a855f7", // Purple for image connections
 };
 
 function WorkflowCanvas() {
@@ -34,7 +38,7 @@ function WorkflowCanvas() {
     edges,
     onNodesChange,
     onEdgesChange,
-    onConnect,
+    setEdges,
     addNode,
   } = useWorkflowStore();
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
@@ -109,7 +113,6 @@ function WorkflowCanvas() {
               data: {
                 model: "gemini-2.5-flash",
                 systemPrompt: "",
-                userMessage: "",
                 output: "",
               },
             };
@@ -126,6 +129,60 @@ function WorkflowCanvas() {
     [reactFlowInstance, addNode]
   );
 
+  // Validate connections and set colors
+  const handleConnect = React.useCallback(
+    (connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      if (!sourceNode || !targetNode) return;
+
+      const sourceHandle = connection.sourceHandle;
+      const targetHandle = connection.targetHandle;
+
+      // Connection validation rules
+      let isValid = false;
+      let connectionType: "prompt" | "result" | "image" | null = null;
+
+      // Prompt -> Prompt (text node output to LLM prompt input)
+      if (sourceHandle === "prompt" && targetHandle === "prompt") {
+        if (sourceNode.type === "text" && targetNode.type === "llm") {
+          isValid = true;
+          connectionType = "prompt";
+        }
+      }
+      // Result -> Input (LLM result to text node input)
+      else if (sourceHandle === "result" && targetHandle === "input") {
+        if (sourceNode.type === "llm" && targetNode.type === "text") {
+          isValid = true;
+          connectionType = "result";
+        }
+      }
+      // Image -> Image (image node output to LLM image input)
+      else if (sourceHandle === "image" && targetHandle === "image") {
+        if (sourceNode.type === "image" && targetNode.type === "llm") {
+          isValid = true;
+          connectionType = "image";
+        }
+      }
+
+      if (isValid && connectionType) {
+        const newEdge = {
+          ...connection,
+          style: { stroke: CONNECTION_COLORS[connectionType] },
+          animated: true,
+        };
+        const updatedEdges = addEdge(newEdge, edges);
+        setEdges(updatedEdges);
+      } else {
+        alert("Invalid connection! Use: prompt->prompt, result->input, or image->image");
+      }
+    },
+    [nodes, edges, setEdges]
+  );
+
   return (
     <div className="w-full h-full bg-[#0a0a0a]" ref={reactFlowWrapper}>
       <ReactFlow
@@ -133,12 +190,12 @@ function WorkflowCanvas() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onConnect={handleConnect}
         onInit={setReactFlowInstance}
         onDrop={onDrop}
         onDragOver={onDragOver}
         nodeTypes={nodeTypes}
-        defaultEdgeOptions={edgeOptions}
+        defaultEdgeOptions={{ animated: true }}
         fitView
         attributionPosition="bottom-left"
       >
