@@ -60,11 +60,3 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 1. Build workflows by dragging nodes onto the canvas.
 2. Configure each node (e.g., select LLM model, upload images).
 3. Run workflows and view results in real time.
-
-## Contributing
-
-Contributions are welcome! Please open issues or submit pull requests for new features, bug fixes, or improvements.
-
-## License
-
-MIT License
