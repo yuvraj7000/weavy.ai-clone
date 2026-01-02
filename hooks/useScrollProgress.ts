@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { ScrollProgress } from '../types';
+import type { ScrollProgress } from '../components/sections/types';
 
 interface UseScrollProgressOptions {
     /**

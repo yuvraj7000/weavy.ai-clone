@@ -2,29 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { NAV_LINKS, NAVBAR_ASSETS } from './data';
+import { NAV_ITEMS, NAV_IMAGES } from './data';
 
-/**
- * Header Component
- * 
- * The main site navigation featuring:
- * - Figma announcement banner
- * - Logo with responsive sizing
- * - Navigation links (desktop only)
- * - "Start Now" CTA that shrinks on scroll
- * - Auto-hide when footer is visible
- */
+// Main navigation header with scroll-responsive CTA
 const Header = () => {
-  const [scrolled, setScrolled] = useState(false);
-  const [footerVisible, setFooterVisible] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      setHasScrolled(window.scrollY > 50);
     };
 
     const handleFooterVisibility = (e: CustomEvent<{ isVisible: boolean }>) => {
-      setFooterVisible(e.detail.isVisible);
+      setIsFooterVisible(e.detail.isVisible);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -36,37 +27,33 @@ const Header = () => {
     };
   }, []);
 
-  const navbarVisibilityClass = footerVisible
+  const navClass = isFooterVisible
     ? 'opacity-0 -translate-y-full pointer-events-none'
     : 'opacity-100 translate-y-0';
 
   return (
     <div
-      className={`navbar_main flex flex-col w-full fixed top-0 left-0 z-[1000] bg-transparent transition-all duration-500 ${navbarVisibilityClass}`}
+      className={`navbar_main flex flex-col w-full fixed top-0 left-0 z-[1000] bg-transparent transition-all duration-500 ${navClass}`}
     >
-      {/* Main Navigation */}
       <div className="flex justify-between w-full h-20 border-black/5">
-        {/* Logo */}
         <div className="pl-0 invert">
           <Link href="/">
             <img
-              src={NAVBAR_ASSETS.logoDesktop}
+              src={NAV_IMAGES.logoDesktop}
               alt="Weavy Logo"
               className="h-[30px] hidden md:block"
             />
             <img
-              src={NAVBAR_ASSETS.logoMobile}
+              src={NAV_IMAGES.logoMobile}
               alt="Weavy Logo"
               className="h-[30px] md:hidden"
             />
           </Link>
         </div>
 
-        {/* Right Section */}
         <div className="flex items-start gap-[30px] h-full">
-          {/* Nav Links - Desktop Only */}
           <nav className="hidden lg:flex items-start p-1  ">
-            {NAV_LINKS.map((link) => (
+            {NAV_ITEMS.map((link) => (
               <div
                 key={link.label}
                 className="text-[13px] uppercase tracking-[0.06em] text-black/70 
@@ -79,11 +66,10 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* Start Now CTA */}
           <Link
             href="/workflow"
             className={`bg-[#FDFFA8] text-black flex items-end justify-center tracking-tight transition-all duration-300 rounded-bl-md hover:text-white hover:bg-[#16161c]  ${
-              scrolled
+              hasScrolled
                 ? 'h-[40px] px-2 text-[13px] pb-1 uppercase'
                 : 'h-[90px] px-4 text-[35px] pb-1'
             }`}

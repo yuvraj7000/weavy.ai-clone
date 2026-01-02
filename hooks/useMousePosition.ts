@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, MouseEvent, RefObject } from 'react';
-import type { MousePosition } from '../types';
+import type { MousePosition } from '../components/sections/types';
 
 interface UseMousePositionReturn {
     /** Current mouse position (normalized -0.5 to 0.5) */

@@ -1,3 +1,3 @@
-export { useScrollProgress } from './useScrollProgress';
-export { useMousePosition } from './useMousePosition';
-export { useHorizontalScroll } from './useHorizontalScroll';
+export { useScrollProgress } from '../../../hooks/useScrollProgress';
+export { useMousePosition } from '../../../hooks/useMousePosition';
+export { useHorizontalScroll } from '../../../hooks/useHorizontalScroll';

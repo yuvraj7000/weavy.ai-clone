@@ -4,12 +4,9 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { BsInstagram, BsLinkedin, BsTwitter, BsDiscord, BsYoutube } from 'react-icons/bs';
 import { GoPlus } from 'react-icons/go';
-import { FOOTER_LINKS, SOCIAL_LINKS, FOOTER_ASSETS } from './data';
+import { FOOTER_NAV, SOCIALS, FOOTER_IMAGES } from './data';
 import type { SocialLink } from './types';
 
-/**
- * Icon component mapping for social links
- */
 const SocialIcons: Record<SocialLink['icon'], React.ComponentType> = {
   linkedin: BsLinkedin,
   instagram: BsInstagram,
@@ -18,22 +15,12 @@ const SocialIcons: Record<SocialLink['icon'], React.ComponentType> = {
   youtube: BsYoutube,
 };
 
-/**
- * Footer Component
- * 
- * The main site footer featuring:
- * - "Artificial Intelligence + Human Creativity" hero statement
- * - Navigation link columns
- * - Social media links
- * - SOC 2 certification badge
- * - Large "Start Now" CTA button
- * - Fully responsive design for mobile screens
- */
+// Main site footer with navigation and social links
 const Footer = () => {
-  const footerRef = useRef<HTMLElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const footer = footerRef.current;
+    const footer = sectionRef.current;
     if (!footer) return;
 
     const observer = new IntersectionObserver(
@@ -52,17 +39,14 @@ const Footer = () => {
   }, []);
 
   return (
-    <footer ref={footerRef} className="relative bg-[#252525] overflow-hidden">
-      {/* Curved Sage Container */}
+    <footer ref={sectionRef} className="relative bg-[#252525] overflow-hidden">
       <div className="relative bg-[#A8B1A5] max-w-[1440px] rounded-tr-[40px] md:rounded-tr-[60px] mt-8 md:mt-24 mr-0 md:mr-16 pt-12 md:pt-24 pb-8 md:pb-12 px-4 md:px-[5%]">
         <div className="max-w-[1440px] mx-auto relative z-10">
-          {/* Hero Statement */}
           <HeroStatement />
 
-          {/* Logo and START NOW Row - Mobile */}
           <div className="flex items-center justify-between mb-8 md:hidden">
             <img
-              src={FOOTER_ASSETS.logo}
+              src={FOOTER_IMAGES.logo}
               alt="Weavy Artistic Intelligence"
               className="h-[32px] w-auto"
               decoding="async"
@@ -76,11 +60,10 @@ const Footer = () => {
             </Link>
           </div>
 
-          {/* Logo and Description - Desktop */}
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 mb-10 md:mb-14">
             <div className="flex flex-col md:flex-row md:max-w-[80%] gap-4 md:gap-10">
               <img
-                src={FOOTER_ASSETS.logo}
+                src={FOOTER_IMAGES.logo}
                 alt="Weavy Artistic Intelligence"
                 className="h-[40px] w-auto mb-2 md:mb-6 hidden md:block"
                 decoding="async"
@@ -94,11 +77,9 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Links and Social Row */}
           <div className="flex flex-col lg:flex-row justify-start gap-10 mb-10 md:mb-14">
-            {/* Link Columns */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-              {FOOTER_LINKS.map((column) => (
+              {FOOTER_NAV.map((column) => (
                 <div key={column.title} className="flex flex-col">
                   <span 
                     className="text-white/80 text-[11px] uppercase tracking-[0.1em] mb-4 font-normal"
@@ -122,9 +103,8 @@ const Footer = () => {
               ))}
             </div>
 
-            {/* Social Icons - Desktop only here, mobile shown separately */}
             <div className="hidden md:flex gap-6 items-start pt-1">
-              {SOCIAL_LINKS.map((social) => {
+              {SOCIALS.map((social) => {
                 const Icon = SocialIcons[social.icon];
                 return (
                   <a
@@ -141,9 +121,8 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Social Icons - Mobile */}
           <div className="flex md:hidden gap-6 items-center mb-8">
-            {SOCIAL_LINKS.map((social) => {
+            {SOCIALS.map((social) => {
               const Icon = SocialIcons[social.icon];
               return (
                 <a
@@ -159,10 +138,9 @@ const Footer = () => {
             })}
           </div>
 
-          {/* SOC 2 Badge */}
           <div className="flex items-center gap-4 mb-6 md:mb-4">
             <img
-              src={FOOTER_ASSETS.soc2Badge}
+              src={FOOTER_IMAGES.soc2Badge}
               alt="SOC2"
               className="w-[45px] md:w-[50px] h-[45px] md:h-[50px] object-contain"
               loading="lazy"
@@ -184,7 +162,6 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Copyright */}
           <div className="font-mono text-[10px] text-[#1A1A1A]/80 uppercase tracking-[0.1em] flex flex-wrap gap-4 font-light">
             <span>WEAVY © 2025.</span>
             <span>ALL RIGHTS RESERVED.</span>
@@ -192,7 +169,6 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Start Now Button - Desktop only */}
       <Link
         href="/workflow"
         className="hidden md:flex bg-[#f7ff9e] text-black absolute bottom-0 right-0 pb-10 pt-2 px-8 ml-16 pr-10 items-center justify-center rounded-tl-[40px] transition-all duration-200 hover:scale-[1.02] hover:shadow-xl active:scale-95 z-20"
@@ -208,9 +184,6 @@ const Footer = () => {
   );
 };
 
-/**
- * Hero statement sub-component with AI + Human Creativity text
- */
 const HeroStatement = () => (
   <div className="flex flex-col items-start gap-2 md:gap-0 md:flex-row md:items-center mb-12 md:mb-32">
     <h2 
