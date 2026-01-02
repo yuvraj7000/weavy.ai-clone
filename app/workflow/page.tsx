@@ -94,18 +94,39 @@ function WorkflowCanvas() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Delete/Backspace to delete selected nodes
-      if ((e.key === "Delete" || e.key === "Backspace") && e.target === document.body) {
+      // Prevent deletion when typing in input fields, textareas, or contenteditable elements
+      const target = e.target as HTMLElement;
+      const isInputElement = 
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.isContentEditable ||
+        target.closest('input, textarea, [contenteditable="true"]');
+
+      // Delete/Backspace to delete selected nodes and edges
+      if ((e.key === "Delete" || e.key === "Backspace") && !isInputElement) {
+        e.preventDefault();
+        
         const selectedNodes = nodes.filter((n) => n.selected);
-        selectedNodes.forEach((node) => {
-          useWorkflowStore.getState().deleteNode(node.id);
-        });
+        const selectedEdges = edges.filter((edge) => edge.selected);
+        
+        // Delete selected nodes
+        if (selectedNodes.length > 0) {
+          selectedNodes.forEach((node) => {
+            useWorkflowStore.getState().deleteNode(node.id);
+          });
+        }
+        
+        // Delete selected edges
+        if (selectedEdges.length > 0) {
+          const updatedEdges = edges.filter((edge) => !edge.selected);
+          setEdges(updatedEdges);
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [nodes]);
+  }, [nodes, edges, setEdges]);
 
   const onDragOver = React.useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -254,7 +275,11 @@ function WorkflowCanvas() {
           color="#ced9d8"
           style={{ backgroundColor: "#0E0E13" }}
         />
-        <Controls position="bottom-center" className="-translate-x-1/4" />
+        <Controls 
+          position="bottom-center" 
+          className="-translate-x-1/4" 
+          style={{ display: 'flex', flexDirection: 'row' }}
+        />
             <MiniMap
               nodeColor="#a855f7"
               maskColor="rgba(0, 0, 0, 0.5)"

@@ -51,8 +51,8 @@ body {
   border: 1px solid #5C5C5F;
   border-radius: 8px;
   padding: 4px;
-  display: flex;
-  flex-direction: row;
+  display: flex !important;
+  flex-direction: row !important;
   gap: 4px;
   position: absolute !important;
   bottom: 20px !important;
