@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Weavy AI Clone
+
+A Next.js-based AI workflow builder inspired by Weavy, featuring modular nodes, LLM integration, and cloud upload support.
+
+## Features
+
+- **Modular Workflow Builder**: Drag-and-drop nodes for text, images, and LLMs.
+- **LLM Integration**: Connect to large language models for AI-powered tasks.
+- **Cloud Uploads**: Upload files via Cloudinary integration.
+- **Modern UI**: Responsive, accessible, and visually appealing interface.
+- **Customizable Nodes**: Easily extend with new node types.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js (v18+ recommended)
+- npm or yarn
+
+### Installation
+
+```bash
+git clone https://github.com/yuvraj7000/weavy.ai-clone.git
+cd weavy.ai-clone
+npm install
+# or
+yarn install
+```
+
+### Running the Development Server
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+## Project Structure
+
+```
+├── app/                # Next.js app directory (routes, API, pages)
+│   ├── api/            # API routes (llm, upload, workflows)
+│   └── workflow/       # Workflow builder page
+├── components/         # React components (nodes, UI, sections)
+│   ├── nodes/          # Node components (ImageNode, LLMNode, TextNode)
+│   ├── sections/       # Page sections (Hero, Footer, etc.)
+│   └── primitives/     # UI primitives (GradientOverlay, NodeHandle, etc.)
+├── hooks/              # Custom React hooks
+├── lib/                # Utility libraries (cloudinary, db, LLM, constants)
+├── public/             # Static assets
+├── store/              # Zustand or other state management
+├── README.md           # Project documentation
+├── package.json        # Project metadata and scripts
+└── ...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Usage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Build workflows by dragging nodes onto the canvas.
+2. Configure each node (e.g., select LLM model, upload images).
+3. Run workflows and view results in real time.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Contributing
 
-## Learn More
+Contributions are welcome! Please open issues or submit pull requests for new features, bug fixes, or improvements.
 
-To learn more about Next.js, take a look at the following resources:
+## License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT License
