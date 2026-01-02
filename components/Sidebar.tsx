@@ -2,10 +2,11 @@
 
 import React, { useCallback, useState, createContext, useContext, useEffect } from "react";
 import { useWorkflowStore } from "@/store/workflowStore";
+import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Modal from "@/components/Modal";
-import { Type, Image as ImageIcon, Sparkles, Search, Zap, Workflow, FolderOpen, Trash2, ArrowRight } from "lucide-react";
-
+import { Type, Image as ImageIcon, Sparkles, Search, Zap, FolderOpen, Trash2, ArrowRight } from "lucide-react";
+import Image from "next/image";
 const SidebarContext = createContext<{
   activeSection: "search" | "quick-access" | "workflows" | null;
   setActiveSection: (section: "search" | "quick-access" | "workflows" | null) => void;
@@ -71,7 +72,9 @@ function PrimarySidebar() {
     <>
       <div className="w-16 bg-[#212126] border-r border-[#302e33] flex flex-col items-center py-4">
         <span className="w-12 h-12 flex items-center justify-center rounded-lg mb-6">
-          <Workflow className="w-4 h-4" />
+          <Link href="/">
+            <Image src="/weavy.svg" alt="Weavy" width={40} height={40} />
+          </Link>
         </span>
         <button
           onClick={() => toggleSection("search")}

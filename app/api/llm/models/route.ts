@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listAvailableModels } from "@/lib/gemini";
 
+
+// i created this route to list the available models from the gemini api
 export async function GET(request: NextRequest) {
   try {
     const models = await listAvailableModels();
