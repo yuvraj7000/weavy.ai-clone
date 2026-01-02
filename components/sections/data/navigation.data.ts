@@ -4,11 +4,11 @@ import type { NavLink } from '../types';
  * Main navigation links
  */
 export const NAV_LINKS: NavLink[] = [
-    { label: 'COLLECTIVE', href: '/collective' },
-    { label: 'ENTERPRISE', href: '/enterprise' },
-    { label: 'PRICING', href: '/pricing' },
-    { label: 'REQUEST A DEMO', href: '/demo' },
-    { label: 'SIGN IN', href: '/signin' },
+    { label: 'ENTERPRISE' },
+    { label: 'COLLECTIVE' },
+    { label: 'PRICING' },
+    { label: 'REQUEST A DEMO' },
+    { label: 'SIGN IN'},
 ];
 
 /**

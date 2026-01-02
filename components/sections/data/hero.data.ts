@@ -5,19 +5,6 @@ import type { HeroNode, NodeExtent } from '../types';
  */
 export const HERO_NODES: HeroNode[] = [
     {
-        id: '1',
-        type: 'imageNode',
-        position: { x: 50, y: 650 },
-        data: {
-            label: 'RODIN 2.0',
-            sublabel: '3D',
-            image:
-                'https://cdn.prod.website-files.com/681b040781d5b5e278a69989/681cd65ba87c69df161752e5_3d_card.avif',
-            width: 140,
-            height: 180,
-        },
-    },
-    {
         id: '2',
         type: 'imageNode',
         position: { x: 50, y: 950 },
@@ -97,19 +84,6 @@ export const HERO_NODES_MOBILE: HeroNode[] = [
         },
     },
     {
-        id: '1',
-        type: 'imageNode',
-        position: { x: 200, y: 200 },
-        data: {
-            label: 'RODIN 2.0',
-            sublabel: '3D',
-            image:
-                'https://cdn.prod.website-files.com/681b040781d5b5e278a69989/681cd65ba87c69df161752e5_3d_card.avif',
-            width: 120,
-            height: 150,
-        },
-    },
-    {
         id: '3',
         type: 'imageNode',
         position: { x: 20, y: 400 },
@@ -153,13 +127,6 @@ export const HERO_NODES_MOBILE: HeroNode[] = [
  * Initial edges connecting the hero nodes
  */
 export const HERO_EDGES = [
-    {
-        id: 'e1-3',
-        source: '1',
-        target: '3',
-        animated: false,
-        style: { stroke: '#c5c5c0', strokeWidth: 1.5 },
-    },
     {
         id: 'e2-3',
         source: '2',

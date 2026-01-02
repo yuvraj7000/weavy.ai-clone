@@ -36,8 +36,6 @@ export interface FooterColumn {
 export interface NavLink {
     /** Display label */
     label: string;
-    /** Target URL */
-    href: string;
 }
 
 /**

@@ -47,22 +47,29 @@ export const ImageNode = ({ data }: ImageNodeProps) => {
     <div className="group select-none">
       <div className="flex items-center gap-3 mb-2 px-1">
         {data.sublabel && (
-          <span className="text-[10px] font-bold tracking-[0.15em] text-black/40 uppercase">
+          <span 
+            className="text-[11px] font-light tracking-wider text-black/50 uppercase"
+            style={{ fontFamily: "'Helvetica Neue', 'Arial', sans-serif" }}
+          >
             {data.sublabel}
           </span>
         )}
-        <span className="text-[10px] font-bold tracking-[0.15em] text-black uppercase">
+        <span 
+          className="text-[11px] font-normal tracking-wider text-black uppercase"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+        >
           {data.label}
         </span>
       </div>
       <div
-        className="relative rounded-[12px] overflow-hidden bg-white shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-black/5"
+        className="relative rounded-[16px] overflow-hidden bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-black/10 transition-all duration-300 group-hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)] group-hover:border-black/20"
         style={{ width: data.width, height: data.height }}
       >
         <img
           src={data.image}
           alt={data.label}
           className="w-full h-full object-cover"
+          style={{ transform: 'scale(1.2)' }}
           draggable={false}
         />
         <NodeHandle type="target" position={Position.Left} />
@@ -91,15 +98,21 @@ export const TextNode = ({ data }: TextNodeProps) => {
   return (
     <div className="group select-none">
       <div className="flex items-center gap-3 mb-2 px-1">
-        <span className="text-[10px] font-bold tracking-[0.15em] text-black uppercase">
+        <span 
+          className="text-[11px] font-normal tracking-wider text-black uppercase"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+        >
           {data.label}
         </span>
       </div>
       <div
-        className="relative p-4 rounded-lg bg-white shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-black/5"
+        className="relative p-5 rounded-xl bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-black/10 transition-all duration-300 group-hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)] group-hover:border-black/20"
         style={{ width: data.width }}
       >
-        <p className="text-[11px] leading-[1.6] text-black/60 font-medium">
+        <p 
+          className="text-[12px] leading-[1.7] text-black/70 font-light"
+          style={{ fontFamily: "'Helvetica Neue', 'Arial', sans-serif" }}
+        >
           {data.text}
         </p>
         <NodeHandle type="target" position={Position.Left} />
@@ -131,16 +144,22 @@ export const VideoNode = ({ data }: VideoNodeProps) => {
     <div className="group select-none">
       <div className="flex items-center gap-3 mb-2 px-1">
         {data.sublabel && (
-          <span className="text-[10px] font-bold tracking-[0.15em] text-black/40 uppercase">
+          <span 
+            className="text-[11px] font-light tracking-wider text-black/50 uppercase"
+            style={{ fontFamily: "'Helvetica Neue', 'Arial', sans-serif" }}
+          >
             {data.sublabel}
           </span>
         )}
-        <span className="text-[10px] font-bold tracking-[0.15em] text-black uppercase">
+        <span 
+          className="text-[11px] font-normal tracking-wider text-black uppercase"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+        >
           {data.label}
         </span>
       </div>
       <div
-        className="relative rounded-[12px] overflow-hidden bg-white shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-black/5"
+        className="relative rounded-[16px] overflow-hidden bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-black/10 transition-all duration-300 group-hover:shadow-[0_16px_48px_rgba(0,0,0,0.15)] group-hover:border-black/20"
         style={{ width: data.width, height: data.height }}
       >
         <video
@@ -150,6 +169,7 @@ export const VideoNode = ({ data }: VideoNodeProps) => {
           muted
           playsInline
           className="w-full h-full object-cover"
+          style={{ transform: 'scale(1.15)' }}
         />
         <NodeHandle type="target" position={Position.Left} />
         <NodeHandle type="source" position={Position.Right} />

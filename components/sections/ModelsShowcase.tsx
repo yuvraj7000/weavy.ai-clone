@@ -1,11 +1,12 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useScrollProgress } from './hooks';
 import { AI_MODELS } from './data';
 import { GradientOverlay } from './primitives';
 
 /**
- * AI Models Section Component
+ * Models Showcase Component
  * 
  * A scroll-driven showcase that displays AI models one at a time.
  * Features:
@@ -13,15 +14,107 @@ import { GradientOverlay } from './primitives';
  * - Background images/videos that transition smoothly
  * - Scrolling list of model names that highlight when active
  * - Fully responsive design for mobile screens
+ * - Audio playback when component is full screen and scrolling
  */
-export default function AIModelsSection() {
+export default function ModelsShowcase() {
   const { sectionRef, progress } = useScrollProgress();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const stickyContainerRef = useRef<HTMLDivElement>(null);
 
   // Calculate which model is currently active based on scroll progress
   const activeIndex = Math.min(
     AI_MODELS.length - 1,
     Math.floor(progress * AI_MODELS.length)
   );
+
+  // Detect when component is full screen (sticky container is in viewport)
+  useEffect(() => {
+    if (!stickyContainerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // Component is full screen when sticky container is fully visible
+          setIsFullScreen(entry.isIntersecting && entry.intersectionRatio >= 0.9);
+        });
+      },
+      {
+        threshold: [0, 0.5, 0.9, 1],
+      }
+    );
+
+    observer.observe(stickyContainerRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Play sound only when actively scrolling and component is full screen
+  useEffect(() => {
+    if (!audioRef.current) return;
+
+    let scrollTimeout: NodeJS.Timeout | null = null;
+
+    const handleScroll = () => {
+      if (isFullScreen && audioRef.current) {
+        // Play sound when scrolling starts
+        if (audioRef.current.paused) {
+          audioRef.current.play().catch((error) => {
+            // Handle autoplay restrictions
+            console.log('Audio play failed:', error);
+          });
+        }
+
+        // Clear existing timeout
+        if (scrollTimeout) {
+          clearTimeout(scrollTimeout);
+        }
+
+        // Pause audio after scrolling stops (300ms delay)
+        scrollTimeout = setTimeout(() => {
+          if (audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause();
+          }
+        }, 300);
+      } else if (!isFullScreen && audioRef.current && !audioRef.current.paused) {
+        // Pause when not full screen
+        audioRef.current.pause();
+        if (scrollTimeout) {
+          clearTimeout(scrollTimeout);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
+    };
+  }, [isFullScreen]);
+
+  // Initialize audio element
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio('/sound.mp3');
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.5; // Adjust volume as needed
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <section
@@ -30,14 +123,14 @@ export default function AIModelsSection() {
       style={{ height: '400vh' }}
     >
       {/* Sticky Background & Content Container */}
-      <div className="sticky top-0 h-screen w-full overflow-hidden">
+      <div ref={stickyContainerRef} className="sticky top-0 h-screen w-full overflow-hidden">
         {/* Dynamic Background Layer */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/30 z-10" />
           {AI_MODELS.map((model, idx) => (
             <div
               key={idx}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              className={`absolute inset-0  ${
                 activeIndex === idx ? 'opacity-100' : 'opacity-0'
               }`}
             >
@@ -78,9 +171,9 @@ export default function AIModelsSection() {
         {/* Content Overlay - Responsive Layout */}
         <div className="relative z-30 h-full w-full flex flex-col md:flex-row">
           {/* Left Text Content - Top on mobile */}
-          <div className="w-full md:w-[40%] h-auto md:h-full flex flex-col justify-start md:justify-center pt-20 md:pt-0 px-4 md:px-0 md:pl-12 lg:pl-20">
+          <div className="w-full md:w-[30%] h-auto md:h-full flex flex-col justify-start md:justify-center pt-20 md:pt-0  mx-20 px-4 md:px-0 md:pl-12 lg:pl-20">
             <h2
-              className="text-white font-light leading-[0.95] tracking-[-0.03em] mb-4 md:mb-6 md:text-[5rem] text-[4rem] "
+              className="text-white font-bold leading-none tracking-[-0.03em] mb-4 md:mb-6 md:text-[5rem] text-[4rem] "
               style={{
                 fontFamily: "'Inter', -apple-system, sans-serif",
               }}
@@ -88,7 +181,7 @@ export default function AIModelsSection() {
               Use all AI models, together at last
             </h2>
             <p
-              className="text-white leading-relaxed text-sm md:text-base"
+              className="text-[#c7c4c4] tracking-wider font-semibold text-sm md:text-base leading-none"
               style={{
                 fontFamily: "'Inter', -apple-system, sans-serif",
               }}
@@ -109,17 +202,15 @@ export default function AIModelsSection() {
                 {AI_MODELS.map((model, idx) => (
                   <div
                     key={idx}
-                    className={`flex items-center transition-all duration-500 whitespace-nowrap ${
-                      activeIndex === idx ? 'text-[#f7ff9e]' : 'opacity-40'
+                    className={`flex items-center  ${
+                      activeIndex === idx ? 'text-[#f7ff9e]' : 'text-white'
                     }`}
                   >
                     <span
-                      className="tracking-[-0.02em] text-[4rem]"
+                      className=" text-[5rem] tracking-tight"
                       style={{
-                        fontFamily: "'General Sans', 'Inter', -apple-system, sans-serif",
-                        fontWeight: 400,
-                        lineHeight: 1.3,
-                        color: activeIndex === idx ? '#f7ff9e' : 'rgba(255, 255, 255, 0.4)',
+                        lineHeight: 1,
+                        color: activeIndex === idx ? '#f7ff9e' : '#ffffff',
                       }}
                     >
                       {model.name}

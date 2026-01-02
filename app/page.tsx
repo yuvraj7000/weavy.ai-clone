@@ -1,20 +1,22 @@
-import AIModelsSection from '@/components/sections/AIModels';
-import ControlTheOutcome from '@/components/sections/ControlTheOutcome';
+import ModelsShowcase from '@/components/sections/ModelsShowcase';
+import ParallaxShowcase from '@/components/sections/ParallaxShowcase';
+import AIMode from '@/components/sections/AIMode';
 import Footer from '@/components/sections/Footer';
-import Hero from '@/components/sections/Hero';
-import Navbar from '@/components/sections/Navbar';
-import ProfessionalTools from '@/components/sections/ProfessionalTools';
-import WorkflowsSlider from '@/components/sections/WorkflowsSlider';
+import HeroSection from '@/components/sections/HeroSection';
+import Header from '@/components/sections/Header';
+import ToolsGallery from '@/components/sections/ToolsGallery';
+import WorkflowsCarousel from '@/components/sections/WorkflowsCarousel';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-background">
-      <Navbar />
-      <Hero />
-      <AIModelsSection />
-      <ProfessionalTools />
-      <ControlTheOutcome />
-      <WorkflowsSlider />
+      <Header />
+      <HeroSection />
+      <ModelsShowcase />
+      <ToolsGallery />
+      <ParallaxShowcase />
+      <AIMode />
+      <WorkflowsCarousel />
       <Footer />
     </main>
   );

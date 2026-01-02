@@ -69,14 +69,15 @@ const Footer = () => {
             />
             <Link
               href="/signin"
-              className="bg-[#f7ff9e] text-black py-2 px-6 rounded-md text-[14px] font-medium tracking-tight transition-transform hover:scale-[1.02] active:scale-95"
+              className="bg-[#f7ff9e] text-black py-2.5 px-7 rounded-md text-[14px] font-normal tracking-tight transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95"
+              style={{ fontFamily: "'Impact', 'Arial Black', sans-serif" }}
             >
               START NOW
             </Link>
           </div>
 
           {/* Logo and Description - Desktop */}
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 mb-8 md:mb-12">
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 mb-10 md:mb-14">
             <div className="flex flex-col md:flex-row md:max-w-[80%] gap-4 md:gap-10">
               <img
                 src={FOOTER_ASSETS.logo}
@@ -84,27 +85,34 @@ const Footer = () => {
                 className="h-[40px] w-auto mb-2 md:mb-6 hidden md:block"
                 decoding="async"
               />
-              <p className="text-white text-[13px] leading-[1.6] md:leading-[1.5]">
-                <span className="text-white font-medium">Weavy</span> is a new way to create. We're bridging the gap between AI capabilities and human creativity, to continue the tradition of craft in artistic expression. We call it Artistic Intelligence.
+              <p 
+                className="text-white text-[13px] leading-[1.7] md:leading-[1.6] font-light"
+                style={{ fontFamily: "'Helvetica Neue', 'Arial', sans-serif" }}
+              >
+                <span className="text-white font-normal">Weavy</span> is a new way to create. We&apos;re bridging the gap between AI capabilities and human creativity, to continue the tradition of craft in artistic expression. We call it Artistic Intelligence.
               </p>
             </div>
           </div>
 
           {/* Links and Social Row */}
-          <div className="flex flex-col lg:flex-row justify-start gap-8 mb-8 md:mb-12">
+          <div className="flex flex-col lg:flex-row justify-start gap-10 mb-10 md:mb-14">
             {/* Link Columns */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
               {FOOTER_LINKS.map((column) => (
                 <div key={column.title} className="flex flex-col">
-                  <span className="text-white/60 text-[11px] uppercase tracking-[0.1em] mb-3 font-medium">
+                  <span 
+                    className="text-white/80 text-[11px] uppercase tracking-[0.1em] mb-4 font-normal"
+                    style={{ fontFamily: "'Courier New', 'Monaco', monospace" }}
+                  >
                     {column.title}
                   </span>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2.5">
                     {column.links.map((link) => (
                       <a
                         key={link.label}
                         href={link.href}
-                        className="text-white text-[12px] font-medium uppercase tracking-[0.02em] hover:opacity-70 transition-opacity"
+                        className="text-white text-[12px] font-normal uppercase tracking-[0.02em] hover:opacity-60 hover:translate-x-0.5 transition-all duration-200"
+                        style={{ fontFamily: "'Roboto', 'Arial', sans-serif" }}
                       >
                         {link.label}
                       </a>
@@ -115,7 +123,7 @@ const Footer = () => {
             </div>
 
             {/* Social Icons - Desktop only here, mobile shown separately */}
-            <div className="hidden md:flex gap-5 items-start">
+            <div className="hidden md:flex gap-6 items-start pt-1">
               {SOCIAL_LINKS.map((social) => {
                 const Icon = SocialIcons[social.icon];
                 return (
@@ -124,7 +132,7 @@ const Footer = () => {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-white hover:opacity-70 transition-opacity text-lg"
+                    className="text-white hover:opacity-60 hover:scale-110 transition-all duration-200 text-lg"
                   >
                     <Icon />
                   </a>
@@ -134,7 +142,7 @@ const Footer = () => {
           </div>
 
           {/* Social Icons - Mobile */}
-          <div className="flex md:hidden gap-5 items-center mb-8">
+          <div className="flex md:hidden gap-6 items-center mb-8">
             {SOCIAL_LINKS.map((social) => {
               const Icon = SocialIcons[social.icon];
               return (
@@ -143,7 +151,7 @@ const Footer = () => {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white hover:opacity-70 transition-opacity text-xl"
+                  className="text-white hover:opacity-60 hover:scale-110 transition-all duration-200 text-xl"
                 >
                   <Icon />
                 </a>
@@ -152,7 +160,7 @@ const Footer = () => {
           </div>
 
           {/* SOC 2 Badge */}
-          <div className="flex items-center gap-4 mb-4 md:mb-2">
+          <div className="flex items-center gap-4 mb-6 md:mb-4">
             <img
               src={FOOTER_ASSETS.soc2Badge}
               alt="SOC2"
@@ -161,17 +169,23 @@ const Footer = () => {
               decoding="async"
             />
             <div>
-              <p className="text-[#1A1A1A] font-medium text-[11px] md:text-[12px]">
-                SOC 2 Type <span className="text-black">II</span> Certified
+              <p 
+                className="text-[#1A1A1A] font-normal text-[11px] md:text-[12px] mb-0.5"
+                style={{ fontFamily: "'Helvetica Neue', 'Arial', sans-serif" }}
+              >
+                SOC 2 Type <span className="text-black font-medium">II</span> Certified
               </p>
-              <p className="text-[#1A1A1A]/50 text-[10px] md:text-[11px]">
+              <p 
+                className="text-[#1A1A1A]/70 text-[10px] md:text-[11px] font-light leading-relaxed"
+                style={{ fontFamily: "'Helvetica Neue', 'Arial', sans-serif" }}
+              >
                 Your data is protected with industry-standard security controls.
               </p>
             </div>
           </div>
 
           {/* Copyright */}
-          <div className="font-mono text-[10px] text-[#1A1A1A]/60 uppercase tracking-[0.1em] flex gap-4">
+          <div className="font-mono text-[10px] text-[#1A1A1A]/80 uppercase tracking-[0.1em] flex flex-wrap gap-4 font-light">
             <span>WEAVY © 2025.</span>
             <span>ALL RIGHTS RESERVED.</span>
           </div>
@@ -180,10 +194,13 @@ const Footer = () => {
 
       {/* Start Now Button - Desktop only */}
       <Link
-        href="/signin"
-        className="hidden md:flex bg-[#f7ff9e] text-black absolute bottom-0 right-0 pb-10 pt-2 px-8 ml-16 pr-10 items-center justify-center rounded-tl-[40px] transition-transform hover:scale-[1.02] active:scale-95 z-20"
+        href="/workflow"
+        className="hidden md:flex bg-[#f7ff9e] text-black absolute bottom-0 right-0 pb-10 pt-2 px-8 ml-16 pr-10 items-center justify-center rounded-tl-[40px] transition-all duration-200 hover:scale-[1.02] hover:shadow-xl active:scale-95 z-20"
       >
-        <span className="text-[40px] md:text-[80px] font-medium leading-none tracking-tight">
+        <span 
+          className="text-[40px] md:text-[80px] font-light leading-none tracking-tight"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+        >
           Start Now
         </span>
       </Link>
@@ -196,16 +213,22 @@ const Footer = () => {
  */
 const HeroStatement = () => (
   <div className="flex flex-col items-start gap-2 md:gap-0 md:flex-row md:items-center mb-12 md:mb-32">
-    <h2 className="text-white text-[clamp(2.5rem,10vw,5.5rem)] font-medium leading-[0.95] tracking-[-0.03em]">
+    <h2 
+      className="text-white text-[clamp(3rem,12vw,6.5rem)] font-light leading-[0.95] tracking-[-0.03em]"
+      style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+    >
       Artificial<br />Intelligence
     </h2>
-    <span className="flex items-center justify-center text-white py-2 md:py-0 md:px-8 group cursor-pointer">
+    <span className="flex items-center justify-center text-white py-2 md:py-0 md:px-8">
       <GoPlus
         size={60}
-        className="md:w-[100px] md:h-[100px] transition-all duration-300 ease-out group-hover:rotate-45 group-hover:text-[#f7ff9e]"
+        className="md:w-[100px] md:h-[100px]"
       />
     </span>
-    <h2 className="text-white text-[clamp(2.5rem,10vw,5.5rem)] font-medium leading-[0.95] tracking-[-0.03em]">
+    <h2 
+      className="text-white text-[clamp(3rem,12vw,6.5rem)] font-light leading-[0.95] tracking-[-0.03em]"
+      style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+    >
       Human<br />Creativity
     </h2>
   </div>

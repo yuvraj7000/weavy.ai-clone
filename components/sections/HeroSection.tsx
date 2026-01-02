@@ -40,7 +40,20 @@ const HeroSection = () => {
   const nodeExtent = useMemo(() => isMobile ? HERO_NODE_EXTENT_MOBILE : HERO_NODE_EXTENT, [isMobile]);
   
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(HERO_EDGES);
+  
+  // Update edges with new colors
+  const edgesWithStyle = useMemo(() => {
+    return HERO_EDGES.map(edge => ({
+      ...edge,
+      style: {
+        stroke: '#4a7c7c',
+        strokeWidth: 2,
+        opacity: 0.6,
+      },
+    }));
+  }, []);
+  
+  const [edges, setEdges, onEdgesChange] = useEdgesState(edgesWithStyle);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -49,7 +62,7 @@ const HeroSection = () => {
 
   return (
     <section
-      className="relative w-full min-h-screen bg-[#bed3e2] overflow-visible z-50"
+      className="relative w-full min-h-screen bg-[#bed3e2] overflow-visible z-50 bg-cover bg-center bg-no-repeat"
       style={{
         backgroundImage: `
           linear-gradient(to bottom, transparent 50%, #ffffff 100%),
@@ -68,22 +81,19 @@ const HeroSection = () => {
   <div className="flex flex-col gap-6 md:gap-8">
     {/* Title Section */}
     <div className="flex flex-col md:flex-row md:items-start gap-6 md:gap-25">
-      <h1 className="text-7xl lg:text-8xl leading-none tracking-tight text-black font-normal">
+      <h1 className=" text-6xl lg:text-8xl leading-none tracking-tight text-black font-normal">
         Weavy
       </h1>
       <div className="flex flex-col md:items-start items-end">
-        <h2 className="text-7xl lg:text-8xl leading-none tracking-tight text-black font-normal">
-          Artistic
-        </h2>
-        <h2 className="text-7xl lg:text-8xl leading-none tracking-tight text-black font-normal ">
-          Intelligence
+        <h2 className="text-6xl lg:text-8xl leading-none tracking-tight text-black font-normal pl-10">
+          Artistic Intelligence
         </h2>
       </div>
     </div>
     
     {/* Description */}
-    <div className="md:pl-80 pl-12 ">
-      <p className="max-w-md md:max-w-lg text-base md:text-lg leading-relaxed text-black/90">
+    <div className="md:pl-80  ">
+      <p className="max-w-md md:max-w-lg text-base tracking-wide md:text-lg text-black/90 pl-24 font-light leading-none">
         Turn your creative vision into scalable workflows. Access all AI models and professional editing tools in one node based platform.
       </p>
     </div>
@@ -92,11 +102,11 @@ const HeroSection = () => {
 
       {/* React Flow Container */}
       <div
-        className="absolute bottom-0 md:bottom-[-30px] left-0 md:left-[5%] w-full md:w-[90%] h-[60%] h-[calc(20%+200px)] md:h-[calc(50%+100px)] rounded-b-lg z-1 overflow-hidden"
-        style={{
-          background:
-            'linear-gradient(to bottom, rgba(247, 255, 168, 0) 0%, rgb(245, 245, 243) 40%, rgb(233, 233, 234) 70%, rgb(239, 255, 242) 100%)',
-        }}
+        className="absolute bottom-0 md:bottom-[-30px] left-0 md:left-[5%] w-full md:w-[90%] h-[60%] h-[calc(20%+200px)] md:h-[calc(50%+100px)] rounded-b-lg z-1 overflow-hidden bg-gradient-to-b from-transparent to-[#f5f5f3] to-50%"
+        // style={{
+        //   background:
+        //     'linear-gradient(to bottom, rgba(247, 255, 168, 0) 0%, rgb(245, 245, 243) 40%, rgb(233, 233, 234) 70%, rgb(239, 255, 242) 100%)',
+        // }}
       >
         <div className="w-full h-full overflow-hidden">
           <ReactFlow
@@ -121,6 +131,7 @@ const HeroSection = () => {
             translateExtent={nodeExtent}
             minZoom={isMobile ? 0.3 : 0.5}
             maxZoom={isMobile ? 0.8 : 1.5}
+            preventScrolling={false}
           />
         </div>
       </div>

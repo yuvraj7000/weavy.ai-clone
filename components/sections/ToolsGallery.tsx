@@ -13,7 +13,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
 };
 
 /**
- * Professional Tools Section Component
+ * Tools Gallery Component
  * 
  * Displays an interactive grid of professional editing tools.
  * Features:
@@ -22,7 +22,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
  * - Scattered chip layout on desktop, horizontal scroll on mobile
  * - Fully responsive design for mobile screens
  */
-const ProfessionalTools = () => {
+const ToolsGallery = () => {
   const [activeTool, setActiveTool] = useState<string>('default');
 
   // Find the asset for the currently active tool
@@ -34,7 +34,7 @@ const ProfessionalTools = () => {
 
   return (
     <section
-      className="relative w-full overflow-hidden py-8 md:py-[1rem]"
+      className="relative w-full overflow-hidden py-8 md:py-[1rem] flex items-center justify-center"
       style={{
         backgroundImage: `
           linear-gradient(to bottom, #ffffff 0%, #ffffff 30%, transparent 70%),
@@ -49,15 +49,11 @@ const ProfessionalTools = () => {
       <div className="container relative z-10 px-4 md:px-[5%]">
         <div className="flex flex-col items-center">
           {/* Header Section */}
-          <div className="text-center max-w-[1200px] px-2">
-            <h3 className="text-[32px] md:text-[60px] lg:text-[6rem] leading-[1.1] tracking-[-0.03em] text-black mb-4 md:mb-[24px]">
-              With all the
-              <br className="md:hidden" />
-              {" "}professional
-              <br />
-              tools you rely on
+          <div className="text-center max-w-[1200px] px-2 pt-20">
+            <h3 className="text-[32px] md:text-[60px] lg:text-[6rem] leading-[1.1] tracking-[-0.03em] text-[#333333] mb-4 md:mb-[24px]">
+              With all the professional <br /> tools you rely on
             </h3>
-            <p className="text-[14px] md:text-[16px] lg:text-[1.125rem] text-[#666666] font-normal">
+            <p className="text-[14px] md:text-[16px] lg:text-[1.5rem] text-[#666666] font-normal pt-4">
               In one seamless workflow
             </p>
           </div>
@@ -114,7 +110,7 @@ const ProfessionalTools = () => {
                     isActive={activeTool === pos.toolId}
                     onHover={() => setActiveTool(pos.toolId)}
                     onLeave={() => setActiveTool('default')}
-                    className="absolute"
+                    className="absolute px-8 md:px-6 py-2 md:py-3 rounded-full border text-[14px] md:text-[18px] font-normal z-20"
                     style={{
                       top: pos.top,
                       left: pos.left,
@@ -131,5 +127,5 @@ const ProfessionalTools = () => {
   );
 };
 
-export default ProfessionalTools;
+export default ToolsGallery;
 

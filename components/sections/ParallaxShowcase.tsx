@@ -7,7 +7,7 @@ import type { ParallaxImage } from './types';
 import useMediaQuery from '@/hooks/useMediaQuery';
 
 /**
- * Control The Outcome Section Component
+ * Parallax Showcase Component
  * 
  * A parallax composition section featuring:
  * - Mouse-responsive floating images
@@ -15,7 +15,7 @@ import useMediaQuery from '@/hooks/useMediaQuery';
  * - Layered astronaut composition
  * - Fully responsive design for mobile screens
  */
-const ControlTheOutcome = () => {
+const ParallaxShowcase = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScrollProgress();
   const { mousePos, handleMouseMove, handleMouseLeave } = useMousePosition(sectionRef);
@@ -56,10 +56,10 @@ const ControlTheOutcome = () => {
     >
       {/* Header Content */}
       <div className="container mx-auto px-4 md:px-[5%] text-center mb-8 md:mb-16 relative z-10">
-        <h2 className="text-[clamp(2.5rem,8vw,5.5rem)] font-medium leading-[0.95] tracking-[-0.03em] text-black mb-4 md:mb-6">
+        <h2 className="text-[clamp(2.5rem,8vw,5.5rem)] font-medium leading-[0.95] tracking-tight text-[#333333] mb-4 md:mb-6">
           Control the<br />Outcome
         </h2>
-        <p className="max-w-[360px] md:max-w-[500px] mx-auto text-base md:text-lg text-[#737373] leading-relaxed px-2">
+        <p className="max-w-[360px] md:max-w-[500px] mx-auto text-base md:text-lg text-[#7e7979] leading-relaxed px-2">
           Layers, type, and blends—all the tools to bring your wildest ideas
           to life. Your creativity, our compositing power.
         </p>
@@ -92,13 +92,7 @@ const ControlTheOutcome = () => {
                   src={image.src}
                   alt={image.alt}
                   className={image.className}
-                  style={{
-                    transform: getParallaxTransform(image),
-                    transition: 'transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                    left: image.left,
-                    top: image.top,
-                    zIndex: image.zIndex,
-                  }}
+                 
                 />
               ))}
             </div>
@@ -109,4 +103,4 @@ const ControlTheOutcome = () => {
   );
 };
 
-export default ControlTheOutcome;
+export default ParallaxShowcase;
