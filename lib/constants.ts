@@ -187,24 +187,24 @@ export const FOOTER_NAV: FooterColumn[] = [
     {
         title: 'Get Started',
         links: [
-            { label: 'REQUEST A DEMO', href: '#' },
-            { label: 'PRICING', href: '/pricing' },
-            { label: 'ENTERPRISE', href: '/enterprise' },
+            { label: 'REQUEST A DEMO', href: '/' },
+            { label: 'PRICING', href: '/' },
+            { label: 'ENTERPRISE', href: '/' },
         ],
     },
     {
         title: 'Company',
         links: [
-            { label: 'ABOUT', href: '/about-us' },
-            { label: 'CAREERS', href: '#' },
-            { label: 'TRUST', href: '#' },
-            { label: 'TERMS', href: '#' },
-            { label: 'PRIVACY', href: '#' },
+            { label: 'ABOUT', href: '/' },
+            { label: 'CAREERS', href: '/' },
+            { label: 'TRUST', href: '/' },
+            { label: 'TERMS', href: '/' },
+            { label: 'PRIVACY', href: '/' },
         ],
     },
     {
         title: 'Connect',
-        links: [{ label: 'COLLECTIVE', href: '/collective' }],
+        links: [{ label: 'COLLECTIVE', href: '/' }],
     },
     {
         title: 'Resources',
