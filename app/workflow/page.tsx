@@ -282,8 +282,12 @@ function WorkflowCanvas() {
         />
             <MiniMap
               nodeColor="#a855f7"
-              maskColor="rgba(0, 0, 0, 0.5)"
+              maskColor="rgba(168, 85, 247, 0.3)"
               position="bottom-right"
+              style={{
+                backgroundColor: '#1a0a2e',
+                border: '1px solid #a855f7',
+              }}
             />
       </ReactFlow>
     </div>
