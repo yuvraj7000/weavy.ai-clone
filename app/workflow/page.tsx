@@ -197,6 +197,69 @@ function WorkflowCanvas() {
     [reactFlowInstance, addNode]
   );
 
+  // Check for circular dependency using DFS
+  const hasCircularDependency = React.useCallback(
+    (sourceId: string, targetId: string, currentEdges: typeof edges): boolean => {
+
+      const adjacencyList = new Map<string, string[]>();
+
+      nodes.forEach((node) => {
+        adjacencyList.set(node.id, []);
+      });
+
+      currentEdges.forEach((edge) => {
+        if (edge.source && edge.target) {
+          const neighbors = adjacencyList.get(edge.source) || [];
+          neighbors.push(edge.target);
+          adjacencyList.set(edge.source, neighbors);
+        }
+      });
+
+      const neighbors = adjacencyList.get(sourceId) || [];
+      neighbors.push(targetId);
+      adjacencyList.set(sourceId, neighbors);
+      
+      const visited = new Set<string>();
+      const recursionStack = new Set<string>();
+      
+      const dfs = (nodeId: string): boolean => {
+        if (recursionStack.has(nodeId)) {
+          // Found a cycle
+          return true;
+        }
+        
+        if (visited.has(nodeId)) {
+          return false;
+        }
+        
+        visited.add(nodeId);
+        recursionStack.add(nodeId);
+        
+        const neighbors = adjacencyList.get(nodeId) || [];
+        for (const neighbor of neighbors) {
+          if (dfs(neighbor)) {
+            return true;
+          }
+        }
+        
+        recursionStack.delete(nodeId);
+        return false;
+      };
+      
+      // Check all nodes for cycles
+      for (const nodeId of adjacencyList.keys()) {
+        if (!visited.has(nodeId)) {
+          if (dfs(nodeId)) {
+            return true;
+          }
+        }
+      }
+      
+      return false;
+    },
+    [nodes]
+  );
+
   // Validate connections and set colors
   const handleConnect = React.useCallback(
     (connection: Connection) => {
@@ -206,6 +269,11 @@ function WorkflowCanvas() {
       const targetNode = nodes.find((n) => n.id === connection.target);
 
       if (!sourceNode || !targetNode) return;
+
+      if (connection.source === connection.target) {
+        showToast("Cannot connect a node to itself!", "error");
+        return;
+      }
 
       const sourceHandle = connection.sourceHandle;
       const targetHandle = connection.targetHandle;
@@ -237,6 +305,11 @@ function WorkflowCanvas() {
       }
 
       if (isValid && connectionType) {
+        if (hasCircularDependency(connection.source, connection.target, edges)) {
+          showToast("Circular dependency detected! This connection would create a cycle.", "error");
+          return;
+        }
+        
         const newEdge = {
           ...connection,
           style: { stroke: CONNECTION_COLORS[connectionType] },
@@ -249,7 +322,7 @@ function WorkflowCanvas() {
         showToast("Invalid connection! Use: prompt->prompt, result->input, or image->image", "error");
       }
     },
-    [nodes, edges, setEdges, showToast]
+    [nodes, edges, setEdges, showToast, hasCircularDependency]
   );
 
   return (
