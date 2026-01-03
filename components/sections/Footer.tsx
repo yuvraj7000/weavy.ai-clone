@@ -52,7 +52,7 @@ const Footer = () => {
               decoding="async"
             />
             <Link
-              href="/signin"
+              href="/workflow"
               className="bg-[#f7ff9e] text-black py-2.5 px-7 rounded-md text-[14px] font-normal tracking-tight transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95"
               style={{ fontFamily: "'Impact', 'Arial Black', sans-serif" }}
             >
