@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useState, useEffect, useRef } from "react";
+import { memo, useCallback, useState, useRef, useEffect } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { Sparkles, Loader2, ArrowRight } from "lucide-react";
@@ -19,28 +19,9 @@ const GEMINI_MODELS = [
 
 function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
+  const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [loading, setLoading] = useState(false);
-  const [localSystemPrompt, setLocalSystemPrompt] = useState(data.systemPrompt || "");
-  const systemPromptTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const prevSystemPromptRef = useRef<string | undefined>(undefined);
-
-  // Sync local state when data changes from outside (but not from our own updates)
-  useEffect(() => {
-    if (data.systemPrompt !== undefined && data.systemPrompt !== prevSystemPromptRef.current) {
-      prevSystemPromptRef.current = data.systemPrompt;
-      setLocalSystemPrompt(data.systemPrompt || "");
-    }
-  }, [data.systemPrompt]);
-
-  // Auto-resize textarea function
-  const adjustSystemPromptHeight = useCallback(() => {
-    const textarea = systemPromptTextareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${Math.max(80, textarea.scrollHeight)}px`;
-    }
-  }, []);
 
   const handleModelChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -49,21 +30,21 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
     [id, updateNodeData]
   );
 
-  const handleSystemPromptChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newValue = e.target.value;
-      setLocalSystemPrompt(newValue);
-      updateNodeData(id, { systemPrompt: newValue });
-      // Adjust height after state update
-      setTimeout(adjustSystemPromptHeight, 0);
-    },
-    [id, updateNodeData, adjustSystemPromptHeight]
-  );
+  // Auto-resize output textarea function
+  const adjustOutputHeight = useCallback(() => {
+    const textarea = outputTextareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.max(150, textarea.scrollHeight)}px`;
+    }
+  }, []);
 
-  // Adjust height when system prompt changes from external source
+  // Adjust height when output changes
   useEffect(() => {
-    adjustSystemPromptHeight();
-  }, [localSystemPrompt, adjustSystemPromptHeight]);
+    if (data.output) {
+      setTimeout(adjustOutputHeight, 0);
+    }
+  }, [data.output, adjustOutputHeight]);
 
   const handleRun = useCallback(async () => {
     setLoading(true);
@@ -73,7 +54,8 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
       // Get fresh inputs from store
       const state = useWorkflowStore.getState();
       const incomingEdges = state.edges.filter((e) => e.target === id);
-      const systemPrompt = localSystemPrompt || "";
+      
+      let systemPrompt = "";
       let prompt = "";
       const images: string[] = [];
 
@@ -83,10 +65,28 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
 
         const targetHandle = edge.targetHandle;
         
-        if (sourceNode.type === "text" && targetHandle === "prompt") {
-          const text = sourceNode.data?.text || "";
-          prompt = text;
-        } else if (sourceNode.type === "image" && targetHandle === "image") {
+        // System prompt from TextNode or LLM result
+        if (targetHandle === "systemPrompt") {
+          if (sourceNode.type === "text") {
+            const text = sourceNode.data?.text || "";
+            systemPrompt = text;
+          } else if (sourceNode.type === "llm") {
+            const output = sourceNode.data?.output || "";
+            systemPrompt = output;
+          }
+        }
+        // Prompt from TextNode or LLM result
+        else if (targetHandle === "prompt") {
+          if (sourceNode.type === "text") {
+            const text = sourceNode.data?.text || "";
+            prompt = text;
+          } else if (sourceNode.type === "llm") {
+            const output = sourceNode.data?.output || "";
+            prompt = output;
+          }
+        }
+        // Image from ImageNode
+        else if (sourceNode.type === "image" && targetHandle === "image") {
           const imageUrl = sourceNode.data?.imageUrl || sourceNode.data?.imageBase64;
           if (imageUrl) {
             images.push(imageUrl);
@@ -121,6 +121,7 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           output: result.data.text,
           loading: false,
         });
+        setTimeout(adjustOutputHeight, 0);
       } else {
         alert(`Error: ${result.error}`);
         updateNodeData(id, { loading: false });
@@ -132,20 +133,35 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
     } finally {
       setLoading(false);
     }
-  }, [id, data.model, localSystemPrompt, updateNodeData]);
+  }, [id, data.model, updateNodeData, adjustOutputHeight]);
 
   return (
     <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
+      {/* System Prompt Input Handle - Left side */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="systemPrompt"
+        className="w-4 h-4 bg-[#FFA500] border-2 border-black rounded-full"
+        style={{ top: "25%" }}
+      />
+      <div
+        className="absolute left-[-100px] top-[25%] transform -translate-y-1/2 text-sm font-medium text-[#FFA500] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
+        style={{ marginTop: "-15px" }}
+      >
+        System Prompt
+      </div>
+
       {/* Prompt Input Handle - Left side */}
       <Handle
         type="target"
         position={Position.Left}
         id="prompt"
         className="w-4 h-4 bg-[#FFA500] border-2 border-black rounded-full"
-        style={{ top: "35%" }}
+        style={{ top: "40%" }}
       />
       <div
-        className="absolute left-[-55px] top-[35%] transform -translate-y-1/2 text-sm font-medium text-[#d4945a] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
+        className="absolute left-[-55px] top-[40%] transform -translate-y-1/2 text-sm font-medium text-[#d4945a] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
         style={{ marginTop: "-15px" }}
       >
         Prompt*
@@ -214,21 +230,21 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           </select>
         </div>
 
-        {/* System Prompt Textarea */}
+        {/* Result Output Display */}
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-md font-medium text-[#919196] pointer-events-none">
-              System Prompt
+              Result
             </span>
           </div>
           <textarea
-            ref={systemPromptTextareaRef}
-            value={localSystemPrompt}
-            onChange={handleSystemPromptChange}
-            placeholder="System prompt (optional)..."
-            className="w-full min-h-[80px] max-w-[500px] p-4 mt-2 text-sm bg-[#353539] border-none rounded resize-none focus:outline-none text-white placeholder-[#5C5C5F] disabled:opacity-70 overflow-y-auto"
+            ref={outputTextareaRef}
+            value={data.output || ""}
+            placeholder={loading ? "Running..." : "Result will appear here after running..."}
+            readOnly
+            className="w-full min-h-[150px] max-w-[500px] p-4 mt-2 text-sm bg-[#353539] border-none rounded resize-none focus:outline-none text-white placeholder-[#5C5C5F] disabled:opacity-70 overflow-y-auto"
             disabled={loading}
-            style={{ height: '80px' }}
+            style={{ height: data.output ? 'auto' : '150px' }}
           />
         </div>
       </div>
@@ -238,11 +254,11 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
         type="source"
         position={Position.Right}
         id="result"
-        className="w-4 h-4 bg-[#3b82f6] border-2 border-black rounded-full"
+        className="w-4 h-4 bg-[#FFA500] border-2 border-black rounded-full"
         style={{ top: "50%" }}
       />
       <div
-        className="absolute right-[-45px] top-[50%] transform -translate-y-1/2 text-sm font-medium text-[#6b8fb8] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
+        className="absolute right-[-45px] top-[50%] transform -translate-y-1/2 text-sm font-medium text-[#FFA500] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
         style={{ marginTop: "-14px" }}
       >
         Result
