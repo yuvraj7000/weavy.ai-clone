@@ -87,11 +87,11 @@ function TextNode({ id, data }: NodeProps<TextNodeData>) {
         type="target"
         position={Position.Left}
         id="input"
-        className="w-4 h-4 bg-[#3b82f6] border-2 border-black rounded-full"
+        className="w-4 h-4 bg-[#FFA500] border-2 border-black rounded-full"
         style={{ top: "50%" }}
       />
       <div
-        className="absolute left-[-38px] top-[50%] transform -translate-y-1/2 text-sm font-medium text-[#6b8fb8] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
+        className="absolute left-[-38px] top-[50%] transform -translate-y-1/2 text-sm font-medium text-[#FFA500] drop-shadow-[0_0_2px_rgba(255,255,255,0.5)] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 ease-in-out"
         style={{ marginTop: "-14px" }}
       >
         Input

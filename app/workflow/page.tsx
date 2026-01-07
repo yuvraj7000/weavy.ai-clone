@@ -29,8 +29,9 @@ const nodeTypes = {
 // Connection type colors
 const CONNECTION_COLORS = {
   prompt: "#FFA500", // Orange for prompt connections
-  result: "#3b82f6", // Blue for result->input connections
+  result: "#FFA500", // Orange for result->input connections
   image: "#a855f7", // Purple for image connections
+  systemPrompt: "#FFA500", // Orange for system prompt connections
 };
 
 function WorkflowCanvas() {
@@ -75,8 +76,6 @@ function WorkflowCanvas() {
           position: { x: 900, y: 200 },
           data: {
             model: "gemini-2.5-flash",
-            systemPrompt: "",
-            userMessage: "",
             output: "",
           },
         },
@@ -180,7 +179,6 @@ function WorkflowCanvas() {
               position,
               data: {
                 model: "gemini-2.5-flash",
-                systemPrompt: "",
                 output: "",
               },
             };
@@ -212,11 +210,60 @@ function WorkflowCanvas() {
 
       // Connection validation rules
       let isValid = false;
-      let connectionType: "prompt" | "result" | "image" | null = null;
+      let connectionType: "prompt" | "result" | "image" | "systemPrompt" | null = null;
 
-      // Prompt -> Prompt (text node output to LLM prompt input)
-      if (sourceHandle === "prompt" && targetHandle === "prompt") {
+      // System Prompt -> System Prompt (text node output to LLM system prompt input)
+      if (sourceHandle === "prompt" && targetHandle === "systemPrompt") {
         if (sourceNode.type === "text" && targetNode.type === "llm") {
+          const existingPromptConnection = edges.find(
+            (e) => e.source === connection.source && e.target === connection.target && e.targetHandle === "prompt"
+          );
+          if (existingPromptConnection) {
+            showToast("Cannot connect the same Text node to both System Prompt and Prompt of the same LLM node!", "error");
+            return;
+          }
+          isValid = true;
+          connectionType = "systemPrompt";
+        }
+      }
+      // Prompt -> Prompt (text node output to LLM prompt input)
+      else if (sourceHandle === "prompt" && targetHandle === "prompt") {
+        if (sourceNode.type === "text" && targetNode.type === "llm") {
+          const existingSystemPromptConnection = edges.find(
+            (e) => e.source === connection.source && e.target === connection.target && e.targetHandle === "systemPrompt"
+          );
+          if (existingSystemPromptConnection) {
+            showToast("Cannot connect the same Text node to both System Prompt and Prompt of the same LLM node!", "error");
+            return;
+          }
+          isValid = true;
+          connectionType = "prompt";
+        }
+      }
+      // Result -> System Prompt (LLM result to LLM system prompt input)
+      else if (sourceHandle === "result" && targetHandle === "systemPrompt") {
+        if (sourceNode.type === "llm" && targetNode.type === "llm") {
+          const existingPromptConnection = edges.find(
+            (e) => e.source === connection.source && e.target === connection.target && e.targetHandle === "prompt"
+          );
+          if (existingPromptConnection) {
+            showToast("Cannot connect the same LLM node to both System Prompt and Prompt of the same LLM node!", "error");
+            return;
+          }
+          isValid = true;
+          connectionType = "systemPrompt";
+        }
+      }
+      // Result -> Prompt (LLM result to LLM prompt input)
+      else if (sourceHandle === "result" && targetHandle === "prompt") {
+        if (sourceNode.type === "llm" && targetNode.type === "llm") {
+          const existingSystemPromptConnection = edges.find(
+            (e) => e.source === connection.source && e.target === connection.target && e.targetHandle === "systemPrompt"
+          );
+          if (existingSystemPromptConnection) {
+            showToast("Cannot connect the same LLM node to both System Prompt and Prompt of the same LLM node!", "error");
+            return;
+          }
           isValid = true;
           connectionType = "prompt";
         }
@@ -246,7 +293,7 @@ function WorkflowCanvas() {
         setEdges(updatedEdges);
         showToast("Connection created successfully!", "success");
       } else {
-        showToast("Invalid connection! Use: prompt->prompt, result->input, or image->image", "error");
+        showToast("Invalid connection! Use: prompt->prompt, prompt->systemPrompt, result->prompt, result->systemPrompt, result->input, or image->image", "error");
       }
     },
     [nodes, edges, setEdges, showToast]
