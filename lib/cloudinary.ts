@@ -90,3 +90,72 @@ export async function uploadImageFromBuffer(
   });
 }
 
+// Upload video from base64
+export async function uploadVideoFromBase64(
+  base64String: string,
+  folder: string = "weavy-workflows"
+): Promise<{ url: string; publicId: string }> {
+  try {
+    ensureConfigured();
+    
+    // Remove data URL prefix if present
+    const base64Data = base64String.replace(/^data:video\/\w+;base64,/, "");
+    
+    const result = await cloudinary.uploader.upload(
+      `data:video/mp4;base64,${base64Data}`,
+      {
+        folder,
+        resource_type: "video",
+        chunk_size: 6000000, // 6MB chunks for large videos
+      }
+    );
+
+    return {
+      url: result.secure_url,
+      publicId: result.public_id,
+    };
+  } catch (error) {
+    console.error("Cloudinary video upload error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to upload video to Cloudinary";
+    throw new Error(errorMessage);
+  }
+}
+
+// Upload video from buffer
+export async function uploadVideoFromBuffer(
+  buffer: Buffer,
+  folder: string = "weavy-workflows"
+): Promise<{ url: string; publicId: string }> {
+  return new Promise((resolve, reject) => {
+    try {
+      ensureConfigured();
+      
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: "video",
+          chunk_size: 6000000, // 6MB chunks for large videos
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary video upload stream error:", error);
+            reject(new Error(error.message || "Failed to upload video to Cloudinary"));
+          } else if (result) {
+            resolve({
+              url: result.secure_url,
+              publicId: result.public_id,
+            });
+          } else {
+            reject(new Error("Upload completed but no result returned"));
+          }
+        }
+      );
+
+      uploadStream.end(buffer);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload video to Cloudinary";
+      reject(new Error(errorMessage));
+    }
+  });
+}
+

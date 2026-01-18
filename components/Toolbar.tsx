@@ -107,7 +107,13 @@ export default function Toolbar() {
         (node) => node.type === "image" && node.data?.imageBase64 && !node.data?.imageUrl
       );
 
+      const videoNodes = nodes.filter(
+        (node) => node.type === "video" && node.data?.videoBase64 && !node.data?.videoUrl
+      );
+
       const updatedNodes = [...nodes];
+      
+      // Upload images
       for (const imageNode of imageNodes) {
         try {
           const base64Data = imageNode.data.imageBase64 as string;
@@ -117,6 +123,7 @@ export default function Toolbar() {
 
           const formData = new FormData();
           formData.append("base64", base64WithoutPrefix);
+          formData.append("type", "image");
 
           const uploadResponse = await fetch("/api/upload", {
             method: "POST",
@@ -146,11 +153,58 @@ export default function Toolbar() {
         }
       }
 
+      // Upload videos
+      for (const videoNode of videoNodes) {
+        try {
+          const base64Data = videoNode.data.videoBase64 as string;
+          const base64WithoutPrefix = base64Data.includes(",")
+            ? base64Data.split(",")[1]
+            : base64Data;
+
+          const formData = new FormData();
+          formData.append("base64", base64WithoutPrefix);
+          formData.append("type", "video");
+
+          const uploadResponse = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const uploadResult = await uploadResponse.json();
+
+          if (uploadResult.success) {
+            const nodeIndex = updatedNodes.findIndex((n) => n.id === videoNode.id);
+            if (nodeIndex !== -1) {
+              updatedNodes[nodeIndex] = {
+                ...updatedNodes[nodeIndex],
+                data: {
+                  ...updatedNodes[nodeIndex].data,
+                  videoUrl: uploadResult.data.url,
+                  videoBase64: undefined,
+                },
+              };
+            }
+          } else {
+            showToast(`Failed to upload video: ${uploadResult.error}`, "error");
+          }
+        } catch (error) {
+          console.error(`Error uploading video for node ${videoNode.id}:`, error);
+          showToast("Failed to upload video", "error");
+        }
+      }
+
+      // Update store with uploaded URLs
       updatedNodes.forEach((node) => {
         if (node.type === "image" && node.data?.imageUrl) {
           useWorkflowStore.getState().updateNodeData(node.id, {
             imageUrl: node.data.imageUrl,
             imageBase64: undefined,
+          });
+        }
+        if (node.type === "video" && node.data?.videoUrl) {
+          useWorkflowStore.getState().updateNodeData(node.id, {
+            videoUrl: node.data.videoUrl,
+            videoBase64: undefined,
           });
         }
       });

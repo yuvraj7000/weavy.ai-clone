@@ -1,46 +1,97 @@
-import { MongoClient, Db, Collection } from "mongodb";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { Workflow } from "./types";
 
-if (!process.env.MONGODB_URI) {
-  throw new Error("Please add your Mongo URI to .env.local");
+// PrismaClient is attached to the `global` object in development to prevent
+// exhausting your database connection limit.
+// Learn more: https://pris.ly/d/help/nextjs-best-practices
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is not set");
 }
 
-const uri = process.env.MONGODB_URI;
-const options = {};
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  });
 
-if (process.env.NODE_ENV === "development") {
-  // In development mode, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
-  const globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>;
-  };
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-  if (!globalWithMongo._mongoClientPromise) {
-    client = new MongoClient(uri, options);
-    globalWithMongo._mongoClientPromise = client.connect();
+// Database helper functions
+export async function getWorkflows(userId?: string) {
+  if (userId) {
+    return await prisma.workflow.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+    });
   }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
-  // In production mode, it's best to not use a global variable.
-  client = new MongoClient(uri, options);
-  clientPromise = client.connect();
+  
+  return await prisma.workflow.findMany({
+    orderBy: { updatedAt: "desc" },
+  });
 }
 
-// Export a module-scoped MongoClient promise. By doing this in a
-// separate module, the client can be shared across functions.
-export default clientPromise;
-
-// Database and Collection helpers
-export async function getDatabase(): Promise<Db> {
-  const client = await clientPromise;
-  return client.db(process.env.MONGODB_DB_NAME || "weavy");
+export async function getWorkflowById(id: string, userId?: string) {
+  const where: { id: string; userId?: string } = { id };
+  
+  if (userId) {
+    where.userId = userId;
+  }
+  
+  return await prisma.workflow.findUnique({
+    where,
+  });
 }
 
-export async function getWorkflowsCollection(): Promise<Collection<Workflow>> {
-  const db = await getDatabase();
-  return db.collection<Workflow>("workflows");
+export async function createWorkflow(workflow: Omit<Workflow, "id" | "createdAt" | "updatedAt"> & { userId: string }) {
+  return await prisma.workflow.create({
+    data: {
+      name: workflow.name,
+      nodes: workflow.nodes as any,
+      edges: workflow.edges as any,
+      userId: workflow.userId,
+    },
+  });
 }
 
+export async function updateWorkflow(id: string, workflow: Partial<Workflow> & { userId: string }) {
+  return await prisma.workflow.updateMany({
+    where: {
+      id,
+      userId: workflow.userId, // Ensure user owns the workflow
+    },
+    data: {
+      name: workflow.name!,
+      nodes: workflow.nodes as any,
+      edges: workflow.edges as any,
+    },
+  }).then(async (result) => {
+    if (result.count === 0) {
+      return null;
+    }
+    return await prisma.workflow.findUnique({
+      where: { id },
+    });
+  });
+}
+
+export async function deleteWorkflow(id: string, userId: string) {
+  const result = await prisma.workflow.deleteMany({
+    where: {
+      id,
+      userId, // Ensure user owns the workflow
+    },
+  });
+  
+  return result.count > 0;
+}

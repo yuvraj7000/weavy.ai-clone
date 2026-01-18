@@ -1,28 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWorkflowsCollection } from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
+import { getWorkflows, getWorkflowById } from "@/lib/db";
 import { WorkflowSchema, Workflow } from "@/lib/types";
-import { ObjectId } from "mongodb";
 
 // GET - List all workflows or get a specific workflow
 export async function GET(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    const collection = await getWorkflowsCollection();
-
     if (id) {
       // Get specific workflow
-      if (!ObjectId.isValid(id)) {
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
         return NextResponse.json(
           { success: false, error: "Invalid workflow ID" },
           { status: 400 }
         );
       }
 
-      const workflow = await collection.findOne({
-        _id: new ObjectId(id),
-      });
+      const workflow = await getWorkflowById(id, userId);
 
       if (!workflow) {
         return NextResponse.json(
@@ -34,7 +41,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          id: workflow._id.toString(),
+          id: workflow.id,
           name: workflow.name,
           nodes: workflow.nodes,
           edges: workflow.edges,
@@ -43,16 +50,13 @@ export async function GET(request: NextRequest) {
         },
       });
     } else {
-      // List all workflows
-      const workflows = await collection
-        .find({})
-        .sort({ updatedAt: -1 })
-        .toArray();
+      // List all workflows for the user
+      const workflows = await getWorkflows(userId);
 
       return NextResponse.json({
         success: true,
-        data: workflows.map((w: Workflow & { _id: ObjectId }) => ({
-          id: w._id.toString(),
+        data: workflows.map((w) => ({
+          id: w.id,
           name: w.name,
           nodes: w.nodes,
           edges: w.edges,
@@ -74,10 +78,35 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Increase body size limit for this route handler
+export const maxDuration = 30;
+
 // POST - Create a new workflow
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Parse JSON with error handling for large payloads
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error("JSON parse error:", error);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "Invalid JSON in request body. The workflow data may be too large." 
+        },
+        { status: 400 }
+      );
+    }
 
     // Validate with Zod
     const validationResult = WorkflowSchema.safeParse({
@@ -97,25 +126,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const collection = await getWorkflowsCollection();
     const workflow = validationResult.data;
-
-    const result = await collection.insertOne({
+    const { createWorkflow } = await import("@/lib/db");
+    
+    const result = await createWorkflow({
       name: workflow.name,
       nodes: workflow.nodes,
       edges: workflow.edges,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      userId,
     });
 
     return NextResponse.json(
       {
         success: true,
         data: {
-          id: result.insertedId.toString(),
-          name: workflow.name,
-          nodes: workflow.nodes,
-          edges: workflow.edges,
+          id: result.id,
+          name: result.name,
+          nodes: result.nodes,
+          edges: result.edges,
         },
       },
       { status: 201 }
@@ -136,10 +164,21 @@ export async function POST(request: NextRequest) {
 // PUT - Update an existing workflow
 export async function PUT(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { id, ...updateData } = body;
 
-    if (!id || !ObjectId.isValid(id)) {
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || !uuidRegex.test(id)) {
       return NextResponse.json(
         { success: false, error: "Valid workflow ID is required" },
         { status: 400 }
@@ -163,22 +202,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const collection = await getWorkflowsCollection();
     const workflow = validationResult.data;
+    const { updateWorkflow } = await import("@/lib/db");
 
-    const result = await collection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          name: workflow.name,
-          nodes: workflow.nodes,
-          edges: workflow.edges,
-          updatedAt: new Date(),
-        },
-      }
-    );
+    const result = await updateWorkflow(id, {
+      name: workflow.name,
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      userId,
+    });
 
-    if (result.matchedCount === 0) {
+    if (!result) {
       return NextResponse.json(
         { success: false, error: "Workflow not found" },
         { status: 404 }
@@ -188,15 +222,24 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        id,
-        name: workflow.name,
-        nodes: workflow.nodes,
-        edges: workflow.edges,
+        id: result.id,
+        name: result.name,
+        nodes: result.nodes,
+        edges: result.edges,
       },
     });
   } catch (error: unknown) {
     console.error("Update workflow error:", error);
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
+    
+    // Check if it's a "not found" error from Supabase
+    if (errorMessage.includes("not found") || errorMessage.includes("No rows")) {
+      return NextResponse.json(
+        { success: false, error: "Workflow not found" },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json(
       {
         success: false,
@@ -210,23 +253,31 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete a workflow
 export async function DELETE(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    if (!id || !ObjectId.isValid(id)) {
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || !uuidRegex.test(id)) {
       return NextResponse.json(
         { success: false, error: "Valid workflow ID is required" },
         { status: 400 }
       );
     }
 
-    const collection = await getWorkflowsCollection();
+    const { deleteWorkflow } = await import("@/lib/db");
+    const result = await deleteWorkflow(id, userId);
 
-    const result = await collection.deleteOne({
-      _id: new ObjectId(id),
-    });
-
-    if (result.deletedCount === 0) {
+    if (!result) {
       return NextResponse.json(
         { success: false, error: "Workflow not found" },
         { status: 404 }
@@ -240,6 +291,15 @@ export async function DELETE(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Delete workflow error:", error);
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
+    
+    // Check if it's a "not found" error from Supabase
+    if (errorMessage.includes("not found") || errorMessage.includes("No rows")) {
+      return NextResponse.json(
+        { success: false, error: "Workflow not found" },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json(
       {
         success: false,

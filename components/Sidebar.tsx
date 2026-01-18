@@ -385,7 +385,7 @@ export function SecondarySidebar() {
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 max-h-[300px]">
+            <div className="flex-1 overflow-y-auto p-4 max-h-[500px]">
               <div className="space-y-2">
                 {(searchQuery ? filteredNodes : nodeButtons).length > 0 ? (
                   (searchQuery ? filteredNodes : nodeButtons).map((node, index) => {

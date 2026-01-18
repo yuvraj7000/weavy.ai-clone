@@ -145,9 +145,20 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
             prompt = output;
           }
         }
-        // Image from ImageNode
-        else if (sourceNode.type === "image" && targetHandle === "image") {
-          const imageUrl = sourceNode.data?.imageUrl || sourceNode.data?.imageBase64;
+        // Image from ImageNode, CropImageNode, or ExtractFrameNode
+        else if (targetHandle === "image") {
+          let imageUrl: string | undefined;
+          
+          if (sourceNode.type === "image") {
+            imageUrl = sourceNode.data?.imageUrl || sourceNode.data?.imageBase64;
+          } else if (sourceNode.type === "cropImage") {
+            // CropImageNode outputs cropped image
+            imageUrl = sourceNode.data?.croppedImageUrl || sourceNode.data?.imageUrl || sourceNode.data?.imageBase64;
+          } else if (sourceNode.type === "extractFrame") {
+            // ExtractFrameNode outputs extracted frame as image
+            imageUrl = sourceNode.data?.extractedFrameUrl;
+          }
+          
           if (imageUrl) {
             images.push(imageUrl);
           }

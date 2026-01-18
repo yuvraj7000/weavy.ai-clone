@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { NAV_ITEMS, NAV_IMAGES } from './data';
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 // Main navigation header with scroll-responsive CTA
 const Header = () => {
@@ -53,7 +54,7 @@ const Header = () => {
 
         <div className="flex items-start gap-[30px] h-full">
           <nav className="hidden lg:flex items-start p-1  ">
-            {NAV_ITEMS.map((link) => (
+            {NAV_ITEMS.filter(item => item.label !== 'SIGN IN').map((link) => (
               <div
                 key={link.label}
                 className="text-[13px] uppercase tracking-[0.06em] text-black/70 
@@ -64,6 +65,27 @@ const Header = () => {
                 {link.label}
               </div>
             ))}
+            <SignedOut>
+              <div className="text-[13px] uppercase tracking-[0.06em] text-black/70 
+                px-4 py-2 rounded-sm transition-all duration-200
+                flex items-center justify-center
+                hover:text-white hover:bg-[#0E0E13]">
+                <SignInButton mode="modal">
+                  <button className="cursor-pointer">SIGN IN</button>
+                </SignInButton>
+              </div>
+            </SignedOut>
+            <SignedIn>
+              <div className="flex items-center justify-center px-2 py-2">
+                <UserButton 
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-8 h-8"
+                    }
+                  }}
+                />
+              </div>
+            </SignedIn>
           </nav>
 
           <Link
