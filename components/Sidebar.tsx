@@ -5,7 +5,9 @@ import { useWorkflowStore } from "@/store/workflowStore";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Modal from "@/components/Modal";
-import { Type, Image as ImageIcon, Sparkles, Search, Zap, FolderOpen, Trash2, ArrowRight, Video, Crop, Film } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { Type, Image as ImageIcon, Sparkles, Search, Zap, FolderOpen, Trash2, ArrowRight, Video, Crop, Film, Globe, Lock } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import Image from "next/image";
 const SidebarContext = createContext<{
   activeSection: "search" | "quick-access" | "workflows" | null;
@@ -38,10 +40,16 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
 function PrimarySidebar() {
   const context = useSidebarContext();
   const { activeSection, setActiveSection } = context;
+  const { user } = useUser();
+  const currentUserId = user?.id || null;
   const workflowId = useWorkflowStore((state) => state.workflowId);
+  const workflowUserId = useWorkflowStore((state) => state.workflowUserId);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { showToast } = useToast();
   const clearWorkflow = useWorkflowStore((state) => state.clearWorkflow);
+  
+  // Only show delete button if user owns the workflow
+  const canDelete = workflowId && currentUserId && workflowUserId === currentUserId;
 
   const toggleSection = (section: "search" | "quick-access" | "workflows") => {
     setActiveSection(activeSection === section ? null : section);
@@ -112,11 +120,27 @@ function PrimarySidebar() {
           <FolderOpen className="w-5 h-5" />
         </button>
 
-        {/* Delete Workflow Button - only visible if workflowId exists */}
-        {workflowId && (
+        {/* User Profile Button */}
+        <div className="mt-auto mb-2 flex items-center justify-center">
+          <div className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors hover:bg-[#353539]">
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "w-10 h-10",
+                  userButtonPopoverCard: "bg-[#212126] border border-[#302e33]",
+                  userButtonPopoverActions: "text-gray-300",
+                  userButtonPopoverActionButton: "hover:bg-[#353539]",
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Delete Workflow Button - only visible if user owns the workflow */}
+        {canDelete && (
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="w-12 h-12 flex items-center justify-center rounded-lg mt-auto transition-colors text-red-400 hover:bg-red-900/20 hover:text-red-300"
+            className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-red-400 hover:bg-red-900/20 hover:text-red-300"
             title="Delete Workflow"
           >
             <Trash2 className="w-5 h-5" />
@@ -146,11 +170,13 @@ export default function Sidebar() {
 export function SecondarySidebar() {
   const context = useSidebarContext();
   const { activeSection, setActiveSection, searchQuery, setSearchQuery } = context;
+  const { user } = useUser();
+  const currentUserId = user?.id || null;
   const addNode = useWorkflowStore((state) => state.addNode);
   const loadWorkflow = useWorkflowStore((state) => state.loadWorkflow);
   const workflowName = useWorkflowStore((state) => state.workflowName);
   const setWorkflowName = useWorkflowStore((state) => state.setWorkflowName);
-  const [workflows, setWorkflows] = useState<Array<{ id: string; name: string; createdAt?: string; updatedAt?: string }>>([]);
+  const [workflows, setWorkflows] = useState<Array<{ id: string; name: string; isPublic?: boolean; userId?: string; createdAt?: string; updatedAt?: string }>>([]);
   const [loadingWorkflows, setLoadingWorkflows] = useState(false);
   const [loadingWorkflow, setLoadingWorkflow] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -199,7 +225,24 @@ export function SecondarySidebar() {
       const result = await response.json();
 
       if (result.success && result.data) {
-        setWorkflows(result.data);
+        // Sort: private workflows first (user's own), then public workflows
+        const sortedWorkflows = (result.data as Array<{ id: string; name: string; isPublic?: boolean; userId?: string; createdAt?: string; updatedAt?: string }>).sort((a, b) => {
+          const aIsOwn = currentUserId && a.userId === currentUserId;
+          const bIsOwn = currentUserId && b.userId === currentUserId;
+          
+          // User's own workflows first
+          if (aIsOwn && !bIsOwn) return -1;
+          if (!aIsOwn && bIsOwn) return 1;
+          
+          // Then sort by visibility: private first, then public
+          if (a.isPublic !== b.isPublic) {
+            return a.isPublic ? 1 : -1;
+          }
+          
+          // Finally sort by updatedAt
+          return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+        });
+        setWorkflows(sortedWorkflows);
       } else {
         setWorkflows([]);
       }
@@ -209,7 +252,7 @@ export function SecondarySidebar() {
     } finally {
       setLoadingWorkflows(false);
     }
-  }, []);
+  }, [currentUserId]);
 
   // Fetch workflows when workflows section is opened
   useEffect(() => {
@@ -227,7 +270,7 @@ export function SecondarySidebar() {
       if (result.success && result.data) {
         const workflow = result.data.find((w: { id: string }) => w.id === workflowId);
         if (workflow) {
-          loadWorkflow(workflow.nodes, workflow.edges, workflow.name, workflow.id);
+          loadWorkflow(workflow.nodes, workflow.edges, workflow.name, workflow.id, workflow.userId);
           showToast("Workflow loaded successfully!", "success");
           setActiveSection(null); // Close sidebar after loading
         } else {
@@ -466,29 +509,118 @@ export function SecondarySidebar() {
                   Loading workflows...
                 </div>
               ) : workflows.length > 0 ? (
-                <div className="space-y-2">
-                  {workflows.map((workflow) => (
-                    <button
-                      key={workflow.id}
-                      onClick={() => handleLoadWorkflowClick(workflow.id)}
-                      disabled={loadingWorkflow === workflow.id}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left group"
-                    >
-                      <div className="flex flex-col items-start gap-1 flex-1">
-                        <span className="text-sm text-gray-300 font-medium">{workflow.name}</span>
-                        {workflow.updatedAt && (
-                          <span className="text-xs text-gray-500">
-                            Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
-                          </span>
+                <div className="space-y-3">
+                  {/* Separate private and public workflows */}
+                  {(() => {
+                    const privateWorkflows = workflows.filter((w) => currentUserId && w.userId === currentUserId);
+                    const publicWorkflows = workflows.filter((w) => w.isPublic && (!currentUserId || w.userId !== currentUserId));
+                    
+                    return (
+                      <>
+                        {/* Your Workflows Heading */}
+                        {privateWorkflows.length > 0 && (
+                          <div className="mb-2">
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <Lock className="w-3 h-3" />
+                              Your Workflows
+                            </h3>
+                          </div>
                         )}
-                      </div>
-                      {loadingWorkflow === workflow.id ? (
-                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                      ) : (
-                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors shrink-0" />
-                      )}
-                    </button>
-                  ))}
+                        
+                        {/* Private Workflows */}
+                        {privateWorkflows.length > 0 && (
+                          <div className="space-y-2">
+                            {privateWorkflows.map((workflow) => {
+                              const isOwn = currentUserId && workflow.userId === currentUserId;
+                              
+                              return (
+                                <button
+                                  key={workflow.id}
+                                  onClick={() => handleLoadWorkflowClick(workflow.id)}
+                                  disabled={loadingWorkflow === workflow.id}
+                                  className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left group"
+                                >
+                                  <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 w-full">
+                                      <span className="text-sm text-gray-300 font-medium truncate">{workflow.name}</span>
+                                      {!workflow.isPublic && isOwn && (
+                                        <Lock className="w-3 h-3 text-gray-500 shrink-0" />
+                                      )}
+                                    </div>
+                                    {workflow.updatedAt && (
+                                      <span className="text-xs text-gray-500">
+                                        Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {loadingWorkflow === workflow.id ? (
+                                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                                  ) : (
+                                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
+                        {/* Public Workflows Heading */}
+                        {publicWorkflows.length > 0 && (
+                          <>
+                            {privateWorkflows.length > 0 && (
+                              <div className="pt-2 border-t border-[#302e33]">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <Globe className="w-3 h-3" />
+                                  Public Workflows
+                                </h3>
+                              </div>
+                            )}
+                            {privateWorkflows.length === 0 && (
+                              <div className="mb-2">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <Globe className="w-3 h-3" />
+                                  Public Workflows
+                                </h3>
+                              </div>
+                            )}
+                            <div className="space-y-2">
+                              {publicWorkflows.map((workflow) => {
+                                const isPublic = workflow.isPublic;
+                                
+                                return (
+                                  <button
+                                    key={workflow.id}
+                                    onClick={() => handleLoadWorkflowClick(workflow.id)}
+                                    disabled={loadingWorkflow === workflow.id}
+                                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left group"
+                                  >
+                                    <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 w-full">
+                                        <span className="text-sm text-gray-300 font-medium truncate">{workflow.name}</span>
+                                        {isPublic && (
+                                          <Globe className="w-3 h-3 text-blue-400 shrink-0" />
+                                        )}
+                                      </div>
+                                      {workflow.updatedAt && (
+                                        <span className="text-xs text-gray-500">
+                                          Updated: {new Date(workflow.updatedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {loadingWorkflow === workflow.id ? (
+                                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                                    ) : (
+                                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors shrink-0" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="text-sm text-gray-500 text-center py-4">

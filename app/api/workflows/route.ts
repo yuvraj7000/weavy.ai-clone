@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
           name: workflow.name,
           nodes: workflow.nodes,
           edges: workflow.edges,
+          isPublic: workflow.isPublic,
+          userId: workflow.userId,
           createdAt: workflow.createdAt,
           updatedAt: workflow.updatedAt,
         },
@@ -55,11 +57,13 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        data: (workflows as Workflow[]).map((w) => ({
+        data: (workflows as any[]).map((w) => ({
           id: w.id,
           name: w.name,
           nodes: w.nodes,
           edges: w.edges,
+          isPublic: w.isPublic,
+          userId: w.userId,
           createdAt: w.createdAt,
           updatedAt: w.updatedAt,
         })),
@@ -134,6 +138,7 @@ export async function POST(request: NextRequest) {
       nodes: workflow.nodes,
       edges: workflow.edges,
       userId,
+      isPublic: workflow.isPublic ?? false,
     });
 
     return NextResponse.json(
@@ -144,6 +149,7 @@ export async function POST(request: NextRequest) {
           name: result.name,
           nodes: result.nodes,
           edges: result.edges,
+          isPublic: result.isPublic,
         },
       },
       { status: 201 }
@@ -205,11 +211,29 @@ export async function PUT(request: NextRequest) {
     const workflow = validationResult.data;
     const { updateWorkflow } = await import("@/lib/db");
 
+    // Check if workflow exists and user owns it
+    const existingWorkflow = await getWorkflowById(id, userId);
+    if (!existingWorkflow) {
+      return NextResponse.json(
+        { success: false, error: "Workflow not found" },
+        { status: 404 }
+      );
+    }
+    
+    // Only owner can update
+    if (existingWorkflow.userId !== userId) {
+      return NextResponse.json(
+        { success: false, error: "You can only edit your own workflows" },
+        { status: 403 }
+      );
+    }
+
     const result = await updateWorkflow(id, {
       name: workflow.name,
       nodes: workflow.nodes,
       edges: workflow.edges,
       userId,
+      isPublic: workflow.isPublic ?? existingWorkflow.isPublic,
     });
 
     if (!result) {
@@ -226,6 +250,7 @@ export async function PUT(request: NextRequest) {
         name: result.name,
         nodes: result.nodes,
         edges: result.edges,
+        isPublic: result.isPublic,
       },
     });
   } catch (error: unknown) {

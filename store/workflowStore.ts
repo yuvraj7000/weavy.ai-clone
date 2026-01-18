@@ -6,6 +6,7 @@ interface WorkflowState {
   edges: Edge[];
   workflowName: string;
   workflowId: string | null;
+  workflowUserId: string | null; // Track workflow owner
   history: { nodes: Node[]; edges: Edge[]; timestamp: Date }[];
   historyIndex: number;
   
@@ -14,6 +15,7 @@ interface WorkflowState {
   setEdges: (edges: Edge[]) => void;
   setWorkflowName: (name: string) => void;
   setWorkflowId: (id: string | null) => void;
+  setWorkflowUserId: (userId: string | null) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
@@ -29,7 +31,7 @@ interface WorkflowState {
   canRedo: () => boolean;
   
   // Workflow management
-  loadWorkflow: (nodes: Node[], edges: Edge[], name?: string, id?: string) => void;
+  loadWorkflow: (nodes: Node[], edges: Edge[], name?: string, id?: string, userId?: string) => void;
   clearWorkflow: () => void;
 }
 
@@ -38,6 +40,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   edges: [],
   workflowName: "",
   workflowId: null,
+  workflowUserId: null,
   history: [],
   historyIndex: -1,
 
@@ -45,6 +48,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   setEdges: (edges) => set({ edges }),
   setWorkflowName: (name) => set({ workflowName: name }),
   setWorkflowId: (id) => set({ workflowId: id }),
+  setWorkflowUserId: (userId) => set({ workflowUserId: userId }),
 
   onNodesChange: (changes) => {
     set({
@@ -140,12 +144,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     return historyIndex < history.length - 1;
   },
 
-      loadWorkflow: (nodes, edges, name, id) => {
+      loadWorkflow: (nodes, edges, name, id, userId) => {
         set({
           nodes,
           edges,
           workflowName: name || "",
           workflowId: id || null,
+          workflowUserId: userId || null,
           history: [{ 
             nodes: JSON.parse(JSON.stringify(nodes)), 
             edges: JSON.parse(JSON.stringify(edges)),
@@ -162,6 +167,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           edges: [],
           workflowName: "",
           workflowId: null,
+          workflowUserId: null,
           history: [emptyState],
           historyIndex: 0,
         });

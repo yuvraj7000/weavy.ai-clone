@@ -30,51 +30,77 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 // Database helper functions
 export async function getWorkflows(userId?: string) {
   if (userId) {
-    return await prisma.workflow.findMany({
-      where: { userId },
-      orderBy: { updatedAt: "desc" },
-    });
+    // Get user's private workflows and all public workflows
+    const [privateWorkflows, publicWorkflows] = await Promise.all([
+      prisma.workflow.findMany({
+        where: { 
+          userId,
+          isPublic: false,
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.workflow.findMany({
+        where: { 
+          isPublic: true,
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+    ]);
+    
+    // Return private first, then public
+    return [...privateWorkflows, ...publicWorkflows];
   }
   
+  // If no userId, return only public workflows
   return await prisma.workflow.findMany({
+    where: { isPublic: true },
     orderBy: { updatedAt: "desc" },
   });
 }
 
 export async function getWorkflowById(id: string, userId?: string) {
-  const where: { id: string; userId?: string } = { id };
+  const workflow = await prisma.workflow.findUnique({
+    where: { id },
+  });
   
-  if (userId) {
-    where.userId = userId;
+  if (!workflow) {
+    return null;
   }
   
-  return await prisma.workflow.findUnique({
-    where,
-  });
+  // If workflow is public, anyone can view it
+  // If workflow is private, only the owner can view it
+  if (workflow.isPublic || (userId && workflow.userId === userId)) {
+    return workflow;
+  }
+  
+  return null;
 }
 
-export async function createWorkflow(workflow: Omit<Workflow, "id" | "createdAt" | "updatedAt"> & { userId: string }) {
+export async function createWorkflow(workflow: Omit<Workflow, "id" | "createdAt" | "updatedAt"> & { userId: string; isPublic?: boolean }) {
   return await prisma.workflow.create({
     data: {
       name: workflow.name,
       nodes: workflow.nodes as any,
       edges: workflow.edges as any,
       userId: workflow.userId,
+      isPublic: workflow.isPublic ?? false,
     },
   });
 }
 
-export async function updateWorkflow(id: string, workflow: Partial<Workflow> & { userId: string }) {
+export async function updateWorkflow(id: string, workflow: Partial<Workflow> & { userId: string; isPublic?: boolean }) {
+  const updateData: any = {};
+  if (workflow.name !== undefined) updateData.name = workflow.name;
+  if (workflow.nodes !== undefined) updateData.nodes = workflow.nodes as any;
+  if (workflow.edges !== undefined) updateData.edges = workflow.edges as any;
+  if (workflow.isPublic !== undefined) updateData.isPublic = workflow.isPublic;
+  
   return await prisma.workflow.updateMany({
     where: {
       id,
       userId: workflow.userId, // Ensure user owns the workflow
     },
-    data: {
-      name: workflow.name!,
-      nodes: workflow.nodes as any,
-      edges: workflow.edges as any,
-    },
+    data: updateData,
   }).then(async (result) => {
     if (result.count === 0) {
       return null;
