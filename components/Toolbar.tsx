@@ -228,11 +228,20 @@ export default function Toolbar() {
 
       const result = await response.json();
       if (result.success) {
+        const savedWorkflowId = result.data?.id || workflowId;
         useWorkflowStore.getState().setWorkflowName(nameToSave);
         // Update workflowId if it was a new workflow
         if (result.data?.id && !workflowId) {
           useWorkflowStore.getState().setWorkflowId(result.data.id);
         }
+        
+        // Emit workflow save event for RightSidebar
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("workflow-saved", { 
+            detail: { workflowName: nameToSave, workflowId: savedWorkflowId } 
+          }));
+        }
+        
         showToast(workflowId ? "Workflow updated successfully!" : "Workflow saved successfully!", "success");
         setWorkflowName("");
       } else {

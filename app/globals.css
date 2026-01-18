@@ -133,3 +133,27 @@ select option {
 select option:hover {
   background-color: #3d3d42;
 }
+
+/* Custom scrollbar styles for right sidebar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 0px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #454549;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #5C5C5F;
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #454549 transparent;
+}

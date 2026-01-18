@@ -15,13 +15,13 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className="antialiased">
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </body>
-      </html>
+    <html lang="en">
+      <body className="antialiased">
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </body>
+    </html>
     </ClerkProvider>
   );
 }

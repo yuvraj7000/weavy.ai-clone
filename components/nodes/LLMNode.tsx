@@ -51,6 +51,20 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
   // Update node data when realtime run updates
   useEffect(() => {
     if (run) {
+      // Emit run status update for RightSidebar
+      if (typeof window !== "undefined") {
+        const { emitRunStatusUpdate } = require("@/components/RightSidebar");
+        emitRunStatusUpdate({
+          id: run.id,
+          status: run.status,
+          nodeId: id,
+          nodeType: "llm",
+          nodeName: "LLM Node",
+          error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
+          output: run.output,
+        });
+      }
+
       if (run.status === "COMPLETED" && run.output) {
         const result = run.output as { success: boolean; data?: { text: string }; error?: string };
         if (result.success && result.data) {

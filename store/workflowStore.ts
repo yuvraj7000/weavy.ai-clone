@@ -6,7 +6,7 @@ interface WorkflowState {
   edges: Edge[];
   workflowName: string;
   workflowId: string | null;
-  history: { nodes: Node[]; edges: Edge[] }[];
+  history: { nodes: Node[]; edges: Edge[]; timestamp: Date }[];
   historyIndex: number;
   
   // Actions
@@ -95,7 +95,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   saveToHistory: () => {
     const { nodes, edges, history, historyIndex } = get();
     const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push({ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) });
+    newHistory.push({ 
+      nodes: JSON.parse(JSON.stringify(nodes)), 
+      edges: JSON.parse(JSON.stringify(edges)),
+      timestamp: new Date(),
+    });
     
     set({
       history: newHistory,
@@ -142,13 +146,17 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           edges,
           workflowName: name || "",
           workflowId: id || null,
-          history: [{ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }],
+          history: [{ 
+            nodes: JSON.parse(JSON.stringify(nodes)), 
+            edges: JSON.parse(JSON.stringify(edges)),
+            timestamp: new Date(),
+          }],
           historyIndex: 0,
         });
       },
 
       clearWorkflow: () => {
-        const emptyState = { nodes: [], edges: [] };
+        const emptyState = { nodes: [], edges: [], timestamp: new Date() };
         set({
           nodes: [],
           edges: [],

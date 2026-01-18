@@ -39,6 +39,20 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
   // Update node data when realtime run updates
   useEffect(() => {
     if (run) {
+      // Emit run status update for RightSidebar
+      if (typeof window !== "undefined") {
+        const { emitRunStatusUpdate } = require("@/components/RightSidebar");
+        emitRunStatusUpdate({
+          id: run.id,
+          status: run.status,
+          nodeId: id,
+          nodeType: "extractFrame",
+          nodeName: "Extract Frame Node",
+          error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
+          output: run.output,
+        });
+      }
+
       if (run.status === "COMPLETED" && run.output) {
         const result = run.output as { success: boolean; data?: { url: string; base64?: string }; error?: string };
         if (result.success && result.data) {

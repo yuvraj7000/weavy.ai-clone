@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       if (resourceType === "video") {
         result = await uploadVideoFromBase64(base64);
       } else {
-        result = await uploadImageFromBase64(base64);
+      result = await uploadImageFromBase64(base64);
       }
     } else if (file) {
       // Upload from file buffer
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       if (resourceType === "video") {
         result = await uploadVideoFromBuffer(buffer);
       } else {
-        result = await uploadImageFromBuffer(buffer);
+      result = await uploadImageFromBuffer(buffer);
       }
     } else {
       return NextResponse.json(

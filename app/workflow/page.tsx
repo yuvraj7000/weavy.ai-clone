@@ -16,6 +16,7 @@ import { useWorkflowStore } from "@/store/workflowStore";
 import { useToast } from "@/components/Toast";
 import Modal from "@/components/Modal";
 import Sidebar, { SecondarySidebar, SidebarProvider, useSidebarContext } from "@/components/Sidebar";
+import RightSidebar from "@/components/RightSidebar";
 import Toolbar from "@/components/Toolbar";
 import TextNode from "@/components/nodes/TextNode";
 import ImageNode from "@/components/nodes/ImageNode";
@@ -706,6 +707,7 @@ export default function Home() {
               <SecondarySidebar />
               <WorkflowCanvasWrapper />
             </div>
+            <RightSidebar />
           </div>
         </SidebarProvider>
       </ReactFlowProvider>
