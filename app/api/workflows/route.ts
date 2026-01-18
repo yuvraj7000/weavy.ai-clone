@@ -45,9 +45,9 @@ export async function GET(request: NextRequest) {
           name: workflow.name,
           nodes: workflow.nodes,
           edges: workflow.edges,
-          isPublic: workflow.isPublic,
+          isPublic: (workflow as any).isPublic ?? false,
           userId: workflow.userId,
-          executionLogs: workflow.executionLogs || [],
+          executionLogs: Array.isArray((workflow as any).executionLogs) ? (workflow as any).executionLogs : [],
           createdAt: workflow.createdAt,
           updatedAt: workflow.updatedAt,
         },
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
           name: result.name,
           nodes: result.nodes,
           edges: result.edges,
-          isPublic: result.isPublic,
+          isPublic: (result as any).isPublic ?? false,
         },
       },
       { status: 201 }
@@ -236,8 +236,10 @@ export async function PUT(request: NextRequest) {
       nodes: workflow.nodes,
       edges: workflow.edges,
       userId,
-      isPublic: workflow.isPublic ?? existingWorkflow.isPublic,
-      executionLogs: workflow.executionLogs !== undefined ? workflow.executionLogs : existingWorkflow.executionLogs || [],
+      isPublic: workflow.isPublic ?? ((existingWorkflow as any).isPublic ?? false),
+      executionLogs: workflow.executionLogs !== undefined 
+        ? (Array.isArray(workflow.executionLogs) ? workflow.executionLogs : [])
+        : (Array.isArray((existingWorkflow as any).executionLogs) ? (existingWorkflow as any).executionLogs : []),
     });
 
     if (!result) {
@@ -254,7 +256,7 @@ export async function PUT(request: NextRequest) {
         name: result.name,
         nodes: result.nodes,
         edges: result.edges,
-        isPublic: result.isPublic,
+        isPublic: (result as any).isPublic ?? false,
       },
     });
   } catch (error: unknown) {
