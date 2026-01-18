@@ -3,6 +3,7 @@
 import { memo, useCallback, useRef } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { useWorkflowStore } from "@/store/workflowStore";
+import { useToast } from "@/components/Toast";
 import { Video, Upload, X } from "lucide-react";
 
 interface VideoNodeData {
@@ -14,6 +15,7 @@ interface VideoNodeData {
 function VideoNode({ id, data }: NodeProps<VideoNodeData>) {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
   
   // Select node when clicking header
   const handleHeaderClick = useCallback((e: React.MouseEvent) => {
@@ -27,10 +29,23 @@ function VideoNode({ id, data }: NodeProps<VideoNodeData>) {
       const file = e.target.files?.[0];
       if (!file) return;
 
+      // Validate file size (4MB = 4 * 1024 * 1024 bytes)
+      const maxSize = 4 * 1024 * 1024; // 4MB in bytes
+      if (file.size > maxSize) {
+        showToast("Video file size must be less than 4MB", "error");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
       // Validate file type
       const validTypes = ["video/mp4", "video/quicktime", "video/webm", "video/x-m4v"];
       if (!validTypes.includes(file.type)) {
-        alert("Please upload a valid video file (mp4, mov, webm, m4v)");
+        showToast("Please upload a valid video file (mp4, mov, webm, m4v)", "error");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         return;
       }
 
@@ -46,7 +61,7 @@ function VideoNode({ id, data }: NodeProps<VideoNodeData>) {
       };
       reader.readAsDataURL(file);
     },
-    [id, updateNodeData]
+    [id, updateNodeData, showToast]
   );
 
   const handleRemove = useCallback(() => {

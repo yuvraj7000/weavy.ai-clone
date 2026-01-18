@@ -74,12 +74,6 @@ body {
   }
 }
 
-/* Red border for failed nodes */
-.react-flow__node.failed {
-  outline: 3px solid #ef4444;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
-}
 
 .react-flow__controls {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
