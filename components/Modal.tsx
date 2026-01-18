@@ -14,6 +14,7 @@ interface ModalProps {
   confirmButtonColor?: string;
   fullScreen?: boolean;
   children?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export default function Modal({
@@ -27,6 +28,7 @@ export default function Modal({
   confirmButtonColor = "bg-blue-600 hover:bg-blue-700",
   fullScreen = false,
   children,
+  disabled = false,
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -65,16 +67,20 @@ export default function Modal({
         <div className="flex items-center justify-end gap-3 p-4 border-t border-[#302e33]">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#353539] border border-[#454549] rounded hover:bg-[#3d3d42] transition-colors"
+            disabled={disabled}
+            className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#353539] border border-[#454549] rounded hover:bg-[#3d3d42] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
           <button
             onClick={() => {
               onConfirm();
-              onClose();
+              if (!disabled) {
+                onClose();
+              }
             }}
-            className={`px-4 py-2 text-sm font-medium text-white ${confirmButtonColor} rounded transition-colors`}
+            disabled={disabled}
+            className={`px-4 py-2 text-sm font-medium text-white ${confirmButtonColor} rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {confirmText}
           </button>

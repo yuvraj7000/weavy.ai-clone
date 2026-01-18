@@ -33,6 +33,7 @@ export const WorkflowSchema = z.object({
   nodes: z.array(z.any()),
   edges: z.array(z.any()),
   isPublic: z.boolean().optional().default(false),
+  executionLogs: z.array(z.any()).optional().default([]),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });

@@ -14,6 +14,13 @@ interface ImageNodeData {
 function ImageNode({ id, data }: NodeProps<ImageNodeData>) {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Select node when clicking header
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { onNodesChange } = useWorkflowStore.getState();
+    onNodesChange([{ id, type: 'select', selected: true }]);
+  }, [id]);
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,7 +53,10 @@ function ImageNode({ id, data }: NodeProps<ImageNodeData>) {
     <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
       <div className="p-4">
         {/* Image label at top-left */}
-        <div className="flex items-center gap-2 h-[42px] items-center">
+        <div 
+          className="flex items-center gap-2 h-[42px] items-center cursor-pointer"
+          onClick={handleHeaderClick}
+        >
           <ImageIcon className="w-4 h-4 text-gray-400" />
           <span className="text-md font-medium text-[#919196] pointer-events-none z-10">
             Image

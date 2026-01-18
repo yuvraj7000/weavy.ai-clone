@@ -17,6 +17,7 @@ interface ExtractFrameNodeData {
   runId?: string;
   publicAccessToken?: string;
   videoDuration?: number; // Video duration in seconds
+  failed?: boolean;
 }
 
 function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
@@ -41,15 +42,16 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
     if (run) {
       // Emit run status update for RightSidebar
       if (typeof window !== "undefined") {
-        const { emitRunStatusUpdate } = require("@/components/RightSidebar");
-        emitRunStatusUpdate({
-          id: run.id,
-          status: run.status,
-          nodeId: id,
-          nodeType: "extractFrame",
-          nodeName: "Extract Frame Node",
-          error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
-          output: run.output,
+        import("@/components/RightSidebar").then((module) => {
+          module.emitRunStatusUpdate({
+            id: run.id,
+            status: run.status as "EXECUTING" | "WAITING" | "COMPLETED" | "FAILED" | "CRASHED",
+            nodeId: id,
+            nodeType: "extractFrame",
+            nodeName: "Extract Frame Node",
+            error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
+            output: run.output,
+          });
         });
       }
 
@@ -73,6 +75,7 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
         updateNodeData(id, {
           loading: false,
           error: errorMsg,
+          failed: true,
         });
       } else if (run.status === "EXECUTING" || run.status === "WAITING") {
         updateNodeData(id, {
@@ -89,6 +92,7 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
       updateNodeData(id, {
         loading: false,
         error: realtimeError.message,
+        failed: true,
       });
     }
   }, [realtimeError, id, updateNodeData]);
@@ -197,11 +201,36 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
       updateNodeData(id, {
         loading: false,
         error: errorMsg,
+        failed: true,
       });
     }
   }, [id, data.videoUrl, connectedVideo, timestamp, videoDuration, updateNodeData, showToast]);
 
+  // Listen for external run requests (from multi-node execution)
+  useEffect(() => {
+    const handleRunNode = (event: Event) => {
+      const customEvent = event as CustomEvent<{ nodeId: string; nodeType?: string }>;
+      if (customEvent.detail.nodeId === id && !data.loading) {
+        handleRun();
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("run-node", handleRunNode);
+      return () => {
+        window.removeEventListener("run-node", handleRunNode);
+      };
+    }
+  }, [id, data.loading, handleRun]);
+
   const displayVideo = data.videoUrl || connectedVideo;
+
+  // Select node when clicking header
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { onNodesChange } = useWorkflowStore.getState();
+    onNodesChange([{ id, type: 'select', selected: true }]);
+  }, [id]);
 
   return (
     <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
@@ -222,7 +251,10 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
 
       <div className="p-4 space-y-3">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={handleHeaderClick}
+        >
           <div className="flex items-center gap-2">
             <Film className="w-4 h-4 text-gray-400" />
             <span className="text-md py-2 font-medium text-[#919196]">Extract Frame</span>
@@ -299,10 +331,6 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
           </div>
         )}
 
-        {/* Error Display */}
-        {data.error && (
-          <div className="text-xs text-red-400 mt-2">{data.error}</div>
-        )}
       </div>
 
       {/* Extracted Frame Output Handle - Right side */}

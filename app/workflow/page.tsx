@@ -561,11 +561,28 @@ function WorkflowCanvas() {
     setShowDeleteNodeModal(false);
   }, [nodesToDelete, showToast]);
 
+  // Update node className based on their state
+  const nodesWithClassName = React.useMemo(() => {
+    return nodes.map((node) => {
+      const classes: string[] = [];
+      if (node.data.loading) {
+        classes.push("running");
+      }
+      if (node.data.failed) {
+        classes.push("failed");
+      }
+      return {
+        ...node,
+        className: classes.join(" "),
+      };
+    });
+  }, [nodes]);
+
   return (
     <>
       <div className="w-full h-full bg-[#0a0a0a]" ref={reactFlowWrapper}>
         <ReactFlow
-          nodes={nodes}
+          nodes={nodesWithClassName}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -575,6 +592,20 @@ function WorkflowCanvas() {
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
           defaultEdgeOptions={{ animated: true }}
+          selectionOnDrag={true}
+          onNodeClick={(event, node) => {
+            // Immediately select the node on click
+            const { onNodesChange } = useWorkflowStore.getState();
+            // Deselect all other nodes first
+            const allNodes = useWorkflowStore.getState().nodes;
+            const changes = [
+              ...allNodes.filter(n => n.id !== node.id && n.selected).map(n => ({ id: n.id, type: 'select' as const, selected: false })),
+              { id: node.id, type: 'select' as const, selected: true }
+            ];
+            if (changes.length > 0) {
+              onNodesChange(changes);
+            }
+          }}
           fitView
           attributionPosition="bottom-left"
         >

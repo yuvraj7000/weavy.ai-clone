@@ -15,6 +15,7 @@ interface LLMNodeData {
   loading?: boolean;
   runId?: string;
   publicAccessToken?: string;
+  failed?: boolean;
 }
 
 const GEMINI_MODELS = [
@@ -53,15 +54,16 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
     if (run) {
       // Emit run status update for RightSidebar
       if (typeof window !== "undefined") {
-        const { emitRunStatusUpdate } = require("@/components/RightSidebar");
-        emitRunStatusUpdate({
-          id: run.id,
-          status: run.status,
-          nodeId: id,
-          nodeType: "llm",
-          nodeName: "LLM Node",
-          error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
-          output: run.output,
+        import("@/components/RightSidebar").then((module) => {
+          module.emitRunStatusUpdate({
+            id: run.id,
+            status: run.status as "EXECUTING" | "WAITING" | "COMPLETED" | "FAILED" | "CRASHED",
+            nodeId: id,
+            nodeType: "llm",
+            nodeName: "LLM Node",
+            error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
+            output: run.output,
+          });
         });
       }
 
@@ -77,6 +79,7 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           showToast(`Error: ${result.error}`, "error");
           updateNodeData(id, {
             loading: false,
+            failed: true,
           });
         }
       } else if (run.status === "FAILED" || run.status === "CRASHED") {
@@ -84,6 +87,7 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
         showToast(errorMsg, "error");
         updateNodeData(id, {
           loading: false,
+          failed: true,
         });
       } else if (run.status === "EXECUTING" || run.status === "WAITING") {
         updateNodeData(id, {
@@ -212,17 +216,51 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
       } else {
         const errorMsg = result.error || "Failed to trigger task";
         showToast(errorMsg, "error");
-        updateNodeData(id, { loading: false });
+        updateNodeData(id, { loading: false, failed: true });
       }
     } catch (error) {
       console.error("Error executing LLM:", error);
       showToast("Failed to execute LLM request", "error");
-      updateNodeData(id, { loading: false });
+      updateNodeData(id, { loading: false, failed: true });
     }
   }, [id, data.model, data.loading, updateNodeData, showToast]);
 
+  // Listen for external run requests (from multi-node execution)
+  useEffect(() => {
+    const handleRunNode = (event: Event) => {
+      const customEvent = event as CustomEvent<{ nodeId: string; nodeType?: string }>;
+      if (customEvent.detail.nodeId === id && !data.loading) {
+        handleRun();
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("run-node", handleRunNode);
+      return () => {
+        window.removeEventListener("run-node", handleRunNode);
+      };
+    }
+  }, [id, data.loading, handleRun]);
+
+  // Clear failed state on click
+  const handleNodeClick = useCallback(() => {
+    if (data.failed) {
+      updateNodeData(id, { failed: false });
+    }
+  }, [id, data.failed, updateNodeData]);
+
+  // Select node when clicking header
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { onNodesChange } = useWorkflowStore.getState();
+    onNodesChange([{ id, type: 'select', selected: true }]);
+  }, [id]);
+
   return (
-    <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
+    <div 
+      className="bg-[#212126] rounded-lg min-w-[350px] relative group"
+      onClick={handleNodeClick}
+    >
       {/* System Prompt Input Handle - Left side */}
       <Handle
         type="target"
@@ -270,7 +308,10 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
 
       <div className="p-4 space-y-3">
         {/* Header with Model and Run button */}
-        <div className="flex items-center justify-between">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={handleHeaderClick}
+        >
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-gray-400" />
             <span className="text-md py-2 font-medium text-[#919196]">{data.model || "Gemini 2.5 Flash"}</span>

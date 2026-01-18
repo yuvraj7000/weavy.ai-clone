@@ -13,16 +13,21 @@ import {
   Download,
   Upload,
   X,
+  Play,
+  Trash2,
 } from "lucide-react";
+import { calculateExecutionOrder } from "@/lib/executionUtils";
 
 export default function Toolbar() {
   const { user } = useUser();
   const currentUserId = user?.id || null;
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteWorkflowModal, setShowDeleteWorkflowModal] = useState(false);
   const [workflowName, setWorkflowName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
   const {
     nodes,
@@ -42,6 +47,9 @@ export default function Toolbar() {
   
   // Check if user can edit (must be owner)
   const canEdit = !workflowId || (currentUserId && workflowUserId === currentUserId);
+  
+  // Check if user can delete (must be owner)
+  const canDelete = workflowId && currentUserId && workflowUserId === currentUserId;
 
   const handleExport = useCallback(() => {
     try {
@@ -241,6 +249,7 @@ export default function Toolbar() {
           nodes: updatedNodes,
           edges,
           isPublic,
+          executionLogs: typeof window !== "undefined" && (window as unknown as { __workflowLogs?: unknown[] }).__workflowLogs ? JSON.parse(JSON.stringify((window as unknown as { __workflowLogs: unknown[] }).__workflowLogs)) : [],
         }),
       });
 
@@ -296,6 +305,74 @@ export default function Toolbar() {
     showToast("New workflow created successfully!", "success");
   }, [clearWorkflow, showToast]);
 
+  const handleDeleteWorkflowClick = useCallback(() => {
+    if (!canDelete) {
+      showToast("You can only delete your own workflows", "error");
+      return;
+    }
+    setShowDeleteWorkflowModal(true);
+  }, [canDelete, showToast]);
+
+  const handleDeleteWorkflowConfirm = useCallback(async () => {
+    if (!workflowId) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/workflows?id=${workflowId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        clearWorkflow();
+        showToast("Workflow deleted successfully!", "success");
+        setShowDeleteWorkflowModal(false);
+      } else {
+        showToast(`Error: ${result.error}`, "error");
+      }
+    } catch (error) {
+      console.error("Error deleting workflow:", error);
+      showToast("Failed to delete workflow", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [workflowId, clearWorkflow, showToast]);
+
+  const handleRunSelectedNodes = useCallback(async () => {
+    const selectedNodes = nodes.filter((n) => n.selected);
+    
+    if (selectedNodes.length === 0) {
+      showToast("Please select at least one node to run", "error");
+      return;
+    }
+
+    // Calculate execution order based on dependencies
+    const selectedNodeIds = selectedNodes.map(n => n.id);
+    const executionLevels = calculateExecutionOrder(selectedNodeIds, nodes, edges);
+    
+    showToast(`Running ${selectedNodes.length} node(s) in ${executionLevels.length} level(s)...`, "success");
+    
+    // Run nodes level by level (parallel within each level)
+    for (const level of executionLevels) {
+      // Run all nodes in this level in parallel
+      const promises = level.map(async (nodeId) => {
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) return;
+        
+        // Trigger the node's run handler based on node type
+        // We'll dispatch a custom event that each node type can listen to
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("run-node", {
+            detail: { nodeId, nodeType: node.type }
+          }));
+        }
+      });
+      
+      // Wait for all nodes in this level to complete before moving to next level
+      await Promise.all(promises);
+    }
+  }, [nodes, edges, showToast]);
+
   return (
     <>
       {/* Top Center: Save, Load, Delete, Undo, Redo, Export, Import */}
@@ -318,6 +395,27 @@ export default function Toolbar() {
           title="New Workflow"
         >
           <FilePlus className="w-4 h-4" />
+        </button>
+        <div className="w-px h-6 bg-[#5C5C5F]" />
+        <button
+          onClick={handleRunSelectedNodes}
+          disabled={nodes.filter((n) => n.selected).length === 0}
+          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
+          title="Run Selected Nodes"
+        >
+          <Play className="w-4 h-4" />
+        </button>
+        <button
+          onClick={handleDeleteWorkflowClick}
+          disabled={!canDelete || isDeleting}
+          className="px-3 py-1.5 hover:bg-red-900/20 rounded disabled:opacity-50 disabled:cursor-not-allowed text-red-400 hover:text-red-300 text-sm transition-colors border border-transparent hover:border-red-700"
+          title={!canDelete ? "You can only delete your own workflows" : "Delete Workflow"}
+        >
+          {isDeleting ? (
+            <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
         </button>
         <div className="w-px h-6 bg-[#5C5C5F]" />
         <button
@@ -470,6 +568,23 @@ export default function Toolbar() {
         confirmText="Create New"
         cancelText="Cancel"
         confirmButtonColor="bg-blue-600 hover:bg-blue-700"
+      />
+
+      {/* Delete Workflow Modal */}
+      <Modal
+        isOpen={showDeleteWorkflowModal}
+        onClose={() => {
+          if (!isDeleting) {
+            setShowDeleteWorkflowModal(false);
+          }
+        }}
+        onConfirm={handleDeleteWorkflowConfirm}
+        title="Delete Workflow"
+        message={`Are you sure you want to delete the workflow "${currentWorkflowName || "Untitled"}"? This action cannot be undone.`}
+        confirmText={isDeleting ? "Deleting..." : "Delete"}
+        cancelText="Cancel"
+        confirmButtonColor="bg-red-600 hover:bg-red-700"
+        disabled={isDeleting}
       />
     </>
   );

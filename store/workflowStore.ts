@@ -51,10 +51,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   setWorkflowUserId: (userId) => set({ workflowUserId: userId }),
 
   onNodesChange: (changes) => {
+    // Only save to history if it's not just a selection change
+    const isOnlySelectionChange = changes.every(
+      change => change.type === 'select' || change.type === 'position' || change.type === 'dimensions'
+    );
+    
     set({
       nodes: applyNodeChanges(changes, get().nodes),
     });
-    get().saveToHistory();
+    
+    // Don't save selection/position changes to history (they're not undoable actions)
+    if (!isOnlySelectionChange) {
+      get().saveToHistory();
+    }
   },
 
   onEdgesChange: (changes) => {

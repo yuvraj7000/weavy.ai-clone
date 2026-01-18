@@ -20,6 +20,7 @@ interface CropImageNodeData {
   error?: string;
   runId?: string;
   publicAccessToken?: string;
+  failed?: boolean;
 }
 
 function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
@@ -71,6 +72,7 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
           updateNodeData(id, {
             loading: false,
             error: result.error,
+            failed: true,
           });
         }
       } else if (run.status === "FAILED" || run.status === "CRASHED") {
@@ -79,6 +81,7 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
         updateNodeData(id, {
           loading: false,
           error: errorMsg,
+          failed: true,
         });
       } else if (run.status === "EXECUTING" || run.status === "WAITING") {
         updateNodeData(id, {
@@ -193,9 +196,27 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
       updateNodeData(id, {
         loading: false,
         error: errorMsg,
+        failed: true,
       });
     }
   }, [id, data.imageUrl, connectedImage, xPercent, yPercent, widthPercent, heightPercent, updateNodeData, showToast]);
+
+  // Listen for external run requests (from multi-node execution)
+  useEffect(() => {
+    const handleRunNode = (event: Event) => {
+      const customEvent = event as CustomEvent<{ nodeId: string; nodeType?: string }>;
+      if (customEvent.detail.nodeId === id && !data.loading) {
+        handleRun();
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("run-node", handleRunNode);
+      return () => {
+        window.removeEventListener("run-node", handleRunNode);
+      };
+    }
+  }, [id, data.loading, handleRun]);
 
   const displayImage = data.croppedImageUrl;
   const inputImage = data.imageUrl || connectedImage;
@@ -206,8 +227,25 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
   const width = parseFloat(widthPercent) || 100;
   const height = parseFloat(heightPercent) || 100;
 
+  // Clear failed state on click
+  const handleNodeClick = useCallback(() => {
+    if (data.failed) {
+      updateNodeData(id, { failed: false });
+    }
+  }, [id, data.failed, updateNodeData]);
+
+  // Select node when clicking header
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { onNodesChange } = useWorkflowStore.getState();
+    onNodesChange([{ id, type: 'select', selected: true }]);
+  }, [id]);
+
   return (
-    <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
+    <div 
+      className="bg-[#212126] rounded-lg min-w-[350px] relative group"
+      onClick={handleNodeClick}
+    >
       {/* Image Input Handle - Left side */}
       <Handle
         type="target"
@@ -225,7 +263,10 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
 
       <div className="p-4 space-y-3">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div 
+          className="flex items-center justify-between cursor-pointer"
+          onClick={handleHeaderClick}
+        >
           <div className="flex items-center gap-2">
             <Crop className="w-4 h-4 text-gray-400" />
             <span className="text-md py-2 font-medium text-[#919196]">Crop Image</span>
@@ -391,10 +432,6 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
           </div>
         )}
 
-        {/* Error Display */}
-        {data.error && (
-          <div className="text-xs text-red-400 mt-2">{data.error}</div>
-        )}
       </div>
 
       {/* Cropped Image Output Handle - Right side */}

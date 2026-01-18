@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
           edges: workflow.edges,
           isPublic: workflow.isPublic,
           userId: workflow.userId,
+          executionLogs: workflow.executionLogs || [],
           createdAt: workflow.createdAt,
           updatedAt: workflow.updatedAt,
         },
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
           edges: w.edges,
           isPublic: w.isPublic,
           userId: w.userId,
+          executionLogs: w.executionLogs || [],
           createdAt: w.createdAt,
           updatedAt: w.updatedAt,
         })),
@@ -139,6 +141,7 @@ export async function POST(request: NextRequest) {
       edges: workflow.edges,
       userId,
       isPublic: workflow.isPublic ?? false,
+      executionLogs: workflow.executionLogs || [],
     });
 
     return NextResponse.json(
@@ -234,6 +237,7 @@ export async function PUT(request: NextRequest) {
       edges: workflow.edges,
       userId,
       isPublic: workflow.isPublic ?? existingWorkflow.isPublic,
+      executionLogs: workflow.executionLogs !== undefined ? workflow.executionLogs : existingWorkflow.executionLogs || [],
     });
 
     if (!result) {

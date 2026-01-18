@@ -45,6 +45,42 @@ body {
   cursor: grabbing;
 }
 
+/* Big border for selected nodes (no animation) */
+.react-flow__node.selected {
+  outline: 1px solid #6b7280 !important;
+  outline-offset: 1px !important;
+  border-radius: 8px;
+  transition: border 0.1s ease-in-out !important;
+}
+
+/* Animated border for running nodes */
+.react-flow__node.running {
+  outline: 3px solid #10b981;
+  outline-offset: 2px;
+  animation: runningPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes runningPulse {
+
+  0%,
+  100% {
+    outline-color: #10b981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+
+  50% {
+    outline-color: #34d399;
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.3);
+  }
+}
+
+/* Red border for failed nodes */
+.react-flow__node.failed {
+  outline: 3px solid #ef4444;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
 .react-flow__controls {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   background-color: #353539;

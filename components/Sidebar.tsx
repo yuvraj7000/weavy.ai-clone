@@ -4,9 +4,8 @@ import React, { useCallback, useState, createContext, useContext, useEffect } fr
 import { useWorkflowStore } from "@/store/workflowStore";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
-import Modal from "@/components/Modal";
 import { useUser } from "@clerk/nextjs";
-import { Type, Image as ImageIcon, Sparkles, Search, Zap, FolderOpen, Trash2, ArrowRight, Video, Crop, Film, Globe, Lock } from "lucide-react";
+import { Type, Image as ImageIcon, Sparkles, Search, Zap, FolderOpen, ArrowRight, Video, Crop, Film, Globe, Lock } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import Image from "next/image";
 const SidebarContext = createContext<{
@@ -40,41 +39,9 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
 function PrimarySidebar() {
   const context = useSidebarContext();
   const { activeSection, setActiveSection } = context;
-  const { user } = useUser();
-  const currentUserId = user?.id || null;
-  const workflowId = useWorkflowStore((state) => state.workflowId);
-  const workflowUserId = useWorkflowStore((state) => state.workflowUserId);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { showToast } = useToast();
-  const clearWorkflow = useWorkflowStore((state) => state.clearWorkflow);
-  
-  // Only show delete button if user owns the workflow
-  const canDelete = workflowId && currentUserId && workflowUserId === currentUserId;
-
   const toggleSection = (section: "search" | "quick-access" | "workflows") => {
     setActiveSection(activeSection === section ? null : section);
   };
-
-  const handleDeleteWorkflow = useCallback(async () => {
-    if (!workflowId) return;
-
-    try {
-      const response = await fetch(`/api/workflows?id=${workflowId}`, {
-        method: "DELETE",
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        clearWorkflow();
-        showToast("Workflow deleted successfully!", "success");
-      } else {
-        showToast(`Error: ${result.error}`, "error");
-      }
-    } catch (error) {
-      console.error("Error deleting workflow:", error);
-      showToast("Failed to delete workflow", "error");
-    }
-  }, [workflowId, clearWorkflow, showToast]);
 
   return (
     <>
@@ -121,7 +88,7 @@ function PrimarySidebar() {
         </button>
 
         {/* User Profile Button */}
-        <div className="mt-auto mb-2 flex items-center justify-center">
+        <div className="mt-auto flex items-center justify-center">
           <div className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors hover:bg-[#353539]">
             <UserButton 
               appearance={{
@@ -135,30 +102,7 @@ function PrimarySidebar() {
             />
           </div>
         </div>
-
-        {/* Delete Workflow Button - only visible if user owns the workflow */}
-        {canDelete && (
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="w-12 h-12 flex items-center justify-center rounded-lg transition-colors text-red-400 hover:bg-red-900/20 hover:text-red-300"
-            title="Delete Workflow"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-        )}
       </div>
-
-      {/* Delete Workflow Modal */}
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteWorkflow}
-        title="Delete Workflow"
-        message="Are you sure you want to delete this workflow? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmButtonColor="bg-red-600 hover:bg-red-700"
-      />
     </>
   );
 }
@@ -271,6 +215,16 @@ export function SecondarySidebar() {
         const workflow = result.data.find((w: { id: string }) => w.id === workflowId);
         if (workflow) {
           loadWorkflow(workflow.nodes, workflow.edges, workflow.name, workflow.id, workflow.userId);
+          
+          // Load execution logs if available
+          if (workflow.executionLogs && Array.isArray(workflow.executionLogs) && workflow.executionLogs.length > 0) {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("workflow-logs-loaded", {
+                detail: { logs: workflow.executionLogs }
+              }));
+            }
+          }
+          
           showToast("Workflow loaded successfully!", "success");
           setActiveSection(null); // Close sidebar after loading
         } else {

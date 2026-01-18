@@ -42,12 +42,26 @@ interface LogEntry {
   details?: string;
 }
 
+// Export function to get current logs for saving
+export function getCurrentLogs(): LogEntry[] {
+  // This will be called from outside, so we need to access logs differently
+  // We'll use a ref or event to get logs
+  return [];
+}
+
 export default function RightSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const nodes = useWorkflowStore((state) => state.nodes);
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const workflowName = useWorkflowStore((state) => state.workflowName);
+  
+  // Expose logs via window for saving
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__workflowLogs = logs;
+    }
+  }, [logs]);
 
   // Monitor nodes for initial log creation (only create, don't update)
   // Updates will come from Trigger.dev run status events
@@ -254,9 +268,24 @@ export default function RightSidebar() {
       });
     };
 
+    const handleWorkflowLogsLoaded = (event: Event) => {
+      const customEvent = event as CustomEvent<{ logs: LogEntry[] }>;
+      const loadedLogs = customEvent.detail.logs;
+      
+      // Convert loaded logs (which may be plain objects) to LogEntry format
+      const formattedLogs = loadedLogs.map((log: any) => ({
+        ...log,
+        timestamp: log.timestamp ? new Date(log.timestamp) : new Date(),
+      }));
+      
+      setLogs(formattedLogs);
+    };
+
     window.addEventListener(WORKFLOW_SAVE_EVENT, handleWorkflowSave);
+    window.addEventListener("workflow-logs-loaded", handleWorkflowLogsLoaded);
     return () => {
       window.removeEventListener(WORKFLOW_SAVE_EVENT, handleWorkflowSave);
+      window.removeEventListener("workflow-logs-loaded", handleWorkflowLogsLoaded);
     };
   }, []);
 

@@ -10,14 +10,15 @@ datasource db {
 }
 
 model Workflow {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  name      String
-  nodes     Json     @default("[]")
-  edges     Json     @default("[]")
-  isPublic  Boolean  @default(false) @map("is_public")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  name          String
+  nodes         Json     @default("[]")
+  edges         Json     @default("[]")
+  isPublic      Boolean  @default(false) @map("is_public")
+  executionLogs Json     @default("[]") @map("execution_logs")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@index([userId])
   @@index([isPublic])

@@ -76,7 +76,7 @@ export async function getWorkflowById(id: string, userId?: string) {
   return null;
 }
 
-export async function createWorkflow(workflow: Omit<Workflow, "id" | "createdAt" | "updatedAt"> & { userId: string; isPublic?: boolean }) {
+export async function createWorkflow(workflow: Omit<Workflow, "id" | "createdAt" | "updatedAt"> & { userId: string; isPublic?: boolean; executionLogs?: any[] }) {
   return await prisma.workflow.create({
     data: {
       name: workflow.name,
@@ -84,16 +84,18 @@ export async function createWorkflow(workflow: Omit<Workflow, "id" | "createdAt"
       edges: workflow.edges as any,
       userId: workflow.userId,
       isPublic: workflow.isPublic ?? false,
+      executionLogs: workflow.executionLogs ? (workflow.executionLogs as any) : [],
     },
   });
 }
 
-export async function updateWorkflow(id: string, workflow: Partial<Workflow> & { userId: string; isPublic?: boolean }) {
+export async function updateWorkflow(id: string, workflow: Partial<Workflow> & { userId: string; isPublic?: boolean; executionLogs?: any[] }) {
   const updateData: any = {};
   if (workflow.name !== undefined) updateData.name = workflow.name;
   if (workflow.nodes !== undefined) updateData.nodes = workflow.nodes as any;
   if (workflow.edges !== undefined) updateData.edges = workflow.edges as any;
   if (workflow.isPublic !== undefined) updateData.isPublic = workflow.isPublic;
+  if (workflow.executionLogs !== undefined) updateData.executionLogs = workflow.executionLogs as any;
   
   return await prisma.workflow.updateMany({
     where: {

@@ -12,6 +12,13 @@ interface TextNodeData {
 function TextNode({ id, data }: NodeProps<TextNodeData>) {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   
+  // Select node when clicking header
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { onNodesChange } = useWorkflowStore.getState();
+    onNodesChange([{ id, type: 'select', selected: true }]);
+  }, [id]);
+  
   // Use specific selector - only re-renders when relevant edges or nodes change
   const connectedResult = useWorkflowStore((state) => {
     const incomingEdge = state.edges.find((e) => e.target === id && e.targetHandle === "input");
@@ -99,7 +106,10 @@ function TextNode({ id, data }: NodeProps<TextNodeData>) {
 
       <div className="p-4">
         {/* Prompt label at top-left */}
-        <div className="flex items-center gap-2">
+        <div 
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={handleHeaderClick}
+        >
         <Type className="w-4 h-4 text-gray-400" />
         <span className=" text-md py-2 font-medium text-[#919196] pointer-events-none z-10">
           Text
