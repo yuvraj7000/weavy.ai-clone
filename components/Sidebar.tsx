@@ -5,7 +5,7 @@ import { useWorkflowStore } from "@/store/workflowStore";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Modal from "@/components/Modal";
-import { Type, Image as ImageIcon, Sparkles, Search, Zap, FolderOpen, Trash2, ArrowRight } from "lucide-react";
+import { Type, Image as ImageIcon, Sparkles, Search, Zap, FolderOpen, Trash2, ArrowRight, Video, Crop, Film } from "lucide-react";
 import Image from "next/image";
 const SidebarContext = createContext<{
   activeSection: "search" | "quick-access" | "workflows" | null;
@@ -152,6 +152,7 @@ export function SecondarySidebar() {
   const setWorkflowName = useWorkflowStore((state) => state.setWorkflowName);
   const [workflows, setWorkflows] = useState<Array<{ id: string; name: string; createdAt?: string; updatedAt?: string }>>([]);
   const [loadingWorkflows, setLoadingWorkflows] = useState(false);
+  const [loadingWorkflow, setLoadingWorkflow] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState(workflowName || "Untitled Workflow");
   const nameInputRef = React.useRef<HTMLInputElement>(null);
@@ -218,6 +219,7 @@ export function SecondarySidebar() {
   }, [activeSection, fetchWorkflows]);
 
   const handleLoadWorkflowClick = useCallback(async (workflowId: string) => {
+    setLoadingWorkflow(workflowId);
     try {
       const response = await fetch("/api/workflows");
       const result = await response.json();
@@ -237,6 +239,8 @@ export function SecondarySidebar() {
     } catch (error) {
       console.error("Error loading workflow:", error);
       showToast("Failed to load workflow", "error");
+    } finally {
+      setLoadingWorkflow(null);
     }
   }, [loadWorkflow, setActiveSection, showToast]);
 
@@ -278,10 +282,53 @@ export function SecondarySidebar() {
     // Don't close sidebar when adding node
   }, [addNode]);
 
+  const createVideoNode = useCallback((position?: { x: number; y: number }) => {
+    const newNode = {
+      id: `video-${Date.now()}`,
+      type: "video",
+      position: position || { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
+      data: {},
+    };
+    addNode(newNode);
+    // Don't close sidebar when adding node
+  }, [addNode]);
+
+  const createCropImageNode = useCallback((position?: { x: number; y: number }) => {
+    const newNode = {
+      id: `cropImage-${Date.now()}`,
+      type: "cropImage",
+      position: position || { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
+      data: {
+        xPercent: 0,
+        yPercent: 0,
+        widthPercent: 100,
+        heightPercent: 100,
+      },
+    };
+    addNode(newNode);
+    // Don't close sidebar when adding node
+  }, [addNode]);
+
+  const createExtractFrameNode = useCallback((position?: { x: number; y: number }) => {
+    const newNode = {
+      id: `extractFrame-${Date.now()}`,
+      type: "extractFrame",
+      position: position || { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
+      data: {
+        timestamp: "50%",
+      },
+    };
+    addNode(newNode);
+    // Don't close sidebar when adding node
+  }, [addNode]);
+
   const nodeButtons = [
     { icon: Type, label: "Text Node", onClick: createTextNode, type: "text" },
-    { icon: ImageIcon, label: "Image Node", onClick: createImageNode, type: "image" },
+    { icon: ImageIcon, label: "Upload Image Node", onClick: createImageNode, type: "image" },
+    { icon: Video, label: "Upload Video Node", onClick: createVideoNode, type: "video" },
     { icon: Sparkles, label: "Run Any LLM Node", onClick: createLLMNode, type: "llm" },
+    { icon: Crop, label: "Crop Image Node", onClick: createCropImageNode, type: "cropImage" },
+    { icon: Film, label: "Extract Frame from Video Node", onClick: createExtractFrameNode, type: "extractFrame" },
   ];
 
   const filteredNodes = nodeButtons.filter((node) =>
@@ -378,7 +425,7 @@ export function SecondarySidebar() {
             <div className="p-4 ">
               <h2 className="text-sm font-semibold text-gray-300">Quick access</h2>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 max-h-[300px]">
+            <div className="flex-1 overflow-y-auto p-4 max-h-[500px]">
               <div className="grid grid-cols-2 gap-2">
                 {nodeButtons.map((node, index) => {
                   const Icon = node.icon;
@@ -394,7 +441,8 @@ export function SecondarySidebar() {
                     >
                       <button
                         onClick={() => node.onClick()}
-                        className="flex flex-col items-center justify-center gap-2 p-4 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors aspect-square w-full"
+                        className="flex flex-col items-center justify-center gap-2 p-4 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors aspect-square w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={node.label}
                       >
                         <Icon className="w-6 h-6 text-gray-400" />
                         <span className="text-xs text-gray-300 text-center">{node.label}</span>
@@ -423,7 +471,8 @@ export function SecondarySidebar() {
                     <button
                       key={workflow.id}
                       onClick={() => handleLoadWorkflowClick(workflow.id)}
-                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] transition-colors text-left group"
+                      disabled={loadingWorkflow === workflow.id}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#212126] border border-[#454549] rounded hover:bg-[#353539] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-left group"
                     >
                       <div className="flex flex-col items-start gap-1 flex-1">
                         <span className="text-sm text-gray-300 font-medium">{workflow.name}</span>
@@ -433,7 +482,11 @@ export function SecondarySidebar() {
                           </span>
                         )}
                       </div>
-                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors shrink-0" />
+                      {loadingWorkflow === workflow.id ? (
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                      ) : (
+                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors shrink-0" />
+                      )}
                     </button>
                   ))}
                 </div>

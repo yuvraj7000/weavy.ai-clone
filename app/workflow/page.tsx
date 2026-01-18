@@ -14,16 +14,23 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { useToast } from "@/components/Toast";
+import Modal from "@/components/Modal";
 import Sidebar, { SecondarySidebar, SidebarProvider, useSidebarContext } from "@/components/Sidebar";
 import Toolbar from "@/components/Toolbar";
 import TextNode from "@/components/nodes/TextNode";
 import ImageNode from "@/components/nodes/ImageNode";
 import LLMNode from "@/components/nodes/LLMNode";
+import VideoNode from "@/components/nodes/VideoNode";
+import CropImageNode from "@/components/nodes/CropImageNode";
+import ExtractFrameNode from "@/components/nodes/ExtractFrameNode";
 
 const nodeTypes = {
   text: TextNode,
   image: ImageNode,
   llm: LLMNode,
+  video: VideoNode,
+  cropImage: CropImageNode,
+  extractFrame: ExtractFrameNode,
 };
 
 // Connection type colors
@@ -31,6 +38,7 @@ const CONNECTION_COLORS = {
   prompt: "#FFA500", // Orange for prompt connections
   result: "#FFA500", // Orange for result->input connections
   image: "#a855f7", // Purple for image connections
+  video: "#a855f7", // Purple for video connections
   systemPrompt: "#FFA500", // Orange for system prompt connections
 };
 
@@ -46,6 +54,8 @@ function WorkflowCanvas() {
   const { showToast } = useToast();
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+  const [showDeleteNodeModal, setShowDeleteNodeModal] = React.useState(false);
+  const [nodesToDelete, setNodesToDelete] = React.useState<string[]>([]);
   const hasInitialized = React.useRef(false);
   const isMounted = React.useRef(false);
 
@@ -108,24 +118,24 @@ function WorkflowCanvas() {
         const selectedNodes = nodes.filter((n) => n.selected);
         const selectedEdges = edges.filter((edge) => edge.selected);
         
-        // Delete selected nodes
+        // Delete selected nodes with confirmation
         if (selectedNodes.length > 0) {
-          selectedNodes.forEach((node) => {
-            useWorkflowStore.getState().deleteNode(node.id);
-          });
+          setNodesToDelete(selectedNodes.map((n) => n.id));
+          setShowDeleteNodeModal(true);
         }
         
-        // Delete selected edges
+        // Delete selected edges (no confirmation needed)
         if (selectedEdges.length > 0) {
           const updatedEdges = edges.filter((edge) => !edge.selected);
           setEdges(updatedEdges);
+          showToast(`${selectedEdges.length} connection(s) deleted`, "success");
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [nodes, edges, setEdges]);
+  }, [nodes, edges, setEdges, showToast]);
 
   const onDragOver = React.useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -182,6 +192,34 @@ function WorkflowCanvas() {
                 output: "",
               },
             };
+          } else if (type === "video") {
+            newNode = {
+              id: `video-${Date.now()}`,
+              type: "video",
+              position,
+              data: {},
+            };
+          } else if (type === "cropImage") {
+            newNode = {
+              id: `cropImage-${Date.now()}`,
+              type: "cropImage",
+              position,
+              data: {
+                xPercent: 0,
+                yPercent: 0,
+                widthPercent: 100,
+                heightPercent: 100,
+              },
+            };
+          } else if (type === "extractFrame") {
+            newNode = {
+              id: `extractFrame-${Date.now()}`,
+              type: "extractFrame",
+              position,
+              data: {
+                timestamp: "50%",
+              },
+            };
           } else {
             return;
           }
@@ -198,7 +236,6 @@ function WorkflowCanvas() {
   // Check for circular dependency using DFS
   const hasCircularDependency = React.useCallback(
     (sourceId: string, targetId: string, currentEdges: typeof edges): boolean => {
-
       const adjacencyList = new Map<string, string[]>();
 
       nodes.forEach((node) => {
@@ -213,6 +250,7 @@ function WorkflowCanvas() {
         }
       });
 
+      // Add the new connection we're trying to make
       const neighbors = adjacencyList.get(sourceId) || [];
       neighbors.push(targetId);
       adjacencyList.set(sourceId, neighbors);
@@ -258,6 +296,61 @@ function WorkflowCanvas() {
     [nodes]
   );
 
+  // Validate entire graph is a DAG (for execution validation) - Reserved for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const validateGraphIsDAG = React.useCallback((): { isValid: boolean; error?: string } => {
+    const adjacencyList = new Map<string, string[]>();
+
+    nodes.forEach((node) => {
+      adjacencyList.set(node.id, []);
+    });
+
+    edges.forEach((edge) => {
+      if (edge.source && edge.target) {
+        const neighbors = adjacencyList.get(edge.source) || [];
+        neighbors.push(edge.target);
+        adjacencyList.set(edge.source, neighbors);
+      }
+    });
+
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+    
+    const dfs = (nodeId: string): boolean => {
+      if (recursionStack.has(nodeId)) {
+        return true; // Found a cycle
+      }
+      
+      if (visited.has(nodeId)) {
+        return false;
+      }
+      
+      visited.add(nodeId);
+      recursionStack.add(nodeId);
+      
+      const neighbors = adjacencyList.get(nodeId) || [];
+      for (const neighbor of neighbors) {
+        if (dfs(neighbor)) {
+          return true;
+        }
+      }
+      
+      recursionStack.delete(nodeId);
+      return false;
+    };
+    
+    // Check all nodes for cycles
+    for (const nodeId of adjacencyList.keys()) {
+      if (!visited.has(nodeId)) {
+        if (dfs(nodeId)) {
+          return { isValid: false, error: "Workflow contains circular dependencies. Please remove cycles before execution." };
+        }
+      }
+    }
+    
+    return { isValid: true };
+  }, [nodes, edges]);
+
   // Validate connections and set colors
   const handleConnect = React.useCallback(
     (connection: Connection) => {
@@ -273,14 +366,28 @@ function WorkflowCanvas() {
         return;
       }
 
+      // Check for duplicate connections
+      const duplicateConnection = edges.find(
+        (e) =>
+          e.source === connection.source &&
+          e.target === connection.target &&
+          e.sourceHandle === connection.sourceHandle &&
+          e.targetHandle === connection.targetHandle
+      );
+      if (duplicateConnection) {
+        showToast("This connection already exists!", "error");
+        return;
+      }
+
       const sourceHandle = connection.sourceHandle;
       const targetHandle = connection.targetHandle;
 
       // Connection validation rules
       let isValid = false;
-      let connectionType: "prompt" | "result" | "image" | "systemPrompt" | null = null;
+      let connectionType: "prompt" | "result" | "image" | "video" | "systemPrompt" | null = null;
 
-      // System Prompt -> System Prompt (text node output to LLM system prompt input)
+      // ========== TEXT NODE CONNECTIONS ==========
+      // Text -> LLM System Prompt
       if (sourceHandle === "prompt" && targetHandle === "systemPrompt") {
         if (sourceNode.type === "text" && targetNode.type === "llm") {
           const existingPromptConnection = edges.find(
@@ -294,7 +401,7 @@ function WorkflowCanvas() {
           connectionType = "systemPrompt";
         }
       }
-      // Prompt -> Prompt (text node output to LLM prompt input)
+      // Text -> LLM Prompt
       else if (sourceHandle === "prompt" && targetHandle === "prompt") {
         if (sourceNode.type === "text" && targetNode.type === "llm") {
           const existingSystemPromptConnection = edges.find(
@@ -308,7 +415,14 @@ function WorkflowCanvas() {
           connectionType = "prompt";
         }
       }
-      // Result -> System Prompt (LLM result to LLM system prompt input)
+      // LLM Result -> Text Input
+      else if (sourceHandle === "result" && targetHandle === "input") {
+        if (sourceNode.type === "llm" && targetNode.type === "text") {
+          isValid = true;
+          connectionType = "result";
+        }
+      }
+      // LLM Result -> LLM System Prompt
       else if (sourceHandle === "result" && targetHandle === "systemPrompt") {
         if (sourceNode.type === "llm" && targetNode.type === "llm") {
           const existingPromptConnection = edges.find(
@@ -322,7 +436,7 @@ function WorkflowCanvas() {
           connectionType = "systemPrompt";
         }
       }
-      // Result -> Prompt (LLM result to LLM prompt input)
+      // LLM Result -> LLM Prompt
       else if (sourceHandle === "result" && targetHandle === "prompt") {
         if (sourceNode.type === "llm" && targetNode.type === "llm") {
           const existingSystemPromptConnection = edges.find(
@@ -336,18 +450,48 @@ function WorkflowCanvas() {
           connectionType = "prompt";
         }
       }
-      // Result -> Input (LLM result to text node input)
-      else if (sourceHandle === "result" && targetHandle === "input") {
-        if (sourceNode.type === "llm" && targetNode.type === "text") {
-          isValid = true;
-          connectionType = "result";
-        }
-      }
-      // Image -> Image (image node output to LLM image input)
+
+      // ========== IMAGE NODE CONNECTIONS ==========
+      // Image connections: image/image handles
       else if (sourceHandle === "image" && targetHandle === "image") {
+        // Image -> LLM Image Input
         if (sourceNode.type === "image" && targetNode.type === "llm") {
           isValid = true;
           connectionType = "image";
+        }
+        // Image -> CropImage Image Input
+        else if (sourceNode.type === "image" && targetNode.type === "cropImage") {
+          isValid = true;
+          connectionType = "image";
+        }
+        // CropImage -> LLM Image Input
+        else if (sourceNode.type === "cropImage" && targetNode.type === "llm") {
+          isValid = true;
+          connectionType = "image";
+        }
+        // CropImage -> CropImage (chained cropping)
+        else if (sourceNode.type === "cropImage" && targetNode.type === "cropImage") {
+          isValid = true;
+          connectionType = "image";
+        }
+        // ExtractFrame -> LLM Image Input
+        else if (sourceNode.type === "extractFrame" && targetNode.type === "llm") {
+          isValid = true;
+          connectionType = "image";
+        }
+        // ExtractFrame -> CropImage Image Input
+        else if (sourceNode.type === "extractFrame" && targetNode.type === "cropImage") {
+          isValid = true;
+          connectionType = "image";
+        }
+      }
+
+      // ========== VIDEO NODE CONNECTIONS ==========
+      // Video -> ExtractFrame Video Input
+      else if (sourceHandle === "video" && targetHandle === "video") {
+        if (sourceNode.type === "video" && targetNode.type === "extractFrame") {
+          isValid = true;
+          connectionType = "video";
         }
       }
 
@@ -366,51 +510,91 @@ function WorkflowCanvas() {
         setEdges(updatedEdges);
         showToast("Connection created successfully!", "success");
       } else {
-        showToast("Invalid connection! Use: prompt->prompt, prompt->systemPrompt, result->prompt, result->systemPrompt, result->input, or image->image", "error");
+        // Provide helpful error message based on node types
+        let errorMsg = "Invalid connection! ";
+        if (sourceNode.type === "text") {
+          errorMsg += "Text nodes can connect to LLM nodes (prompt/systemPrompt handles).";
+        } else if (sourceNode.type === "image" || sourceNode.type === "cropImage" || sourceNode.type === "extractFrame") {
+          errorMsg += "Image nodes can connect to LLM or CropImage nodes (image handles).";
+        } else if (sourceNode.type === "video") {
+          errorMsg += "Video nodes can connect to ExtractFrame nodes (video handles).";
+        } else if (sourceNode.type === "llm") {
+          errorMsg += "LLM nodes can connect to Text nodes (result->input) or other LLM nodes (result->prompt/systemPrompt).";
+        } else {
+          errorMsg += "Please check handle compatibility between source and target nodes.";
+        }
+        showToast(errorMsg, "error");
       }
     },
     [nodes, edges, setEdges, showToast, hasCircularDependency]
   );
 
+  const handleDeleteNodesConfirm = React.useCallback(() => {
+    const count = nodesToDelete.length;
+    nodesToDelete.forEach((nodeId) => {
+      useWorkflowStore.getState().deleteNode(nodeId);
+    });
+    showToast(`${count} node(s) deleted successfully`, "success");
+    setNodesToDelete([]);
+    setShowDeleteNodeModal(false);
+  }, [nodesToDelete, showToast]);
+
   return (
-    <div className="w-full h-full bg-[#0a0a0a]" ref={reactFlowWrapper}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={handleConnect}
-        onInit={setReactFlowInstance}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        nodeTypes={nodeTypes}
-        defaultEdgeOptions={{ animated: true }}
-        fitView
-        attributionPosition="bottom-left"
-      >
-        <Background 
-          variant={BackgroundVariant.Dots}
-          gap={30} 
-          size={0.8} 
-          color="#ced9d8"
-          style={{ backgroundColor: "#0E0E13" }}
-        />
-        <Controls 
-          position="bottom-center" 
-          className="-translate-x-1/4" 
-          style={{ display: 'flex', flexDirection: 'row' }}
-        />
-            <MiniMap
-              nodeColor="#a855f7"
-              maskColor="rgba(168, 85, 247, 0.3)"
-              position="bottom-right"
-              style={{
-                backgroundColor: '#1a0a2e',
-                border: '1px solid #a855f7',
-              }}
-            />
-      </ReactFlow>
-    </div>
+    <>
+      <div className="w-full h-full bg-[#0a0a0a]" ref={reactFlowWrapper}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={handleConnect}
+          onInit={setReactFlowInstance}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          nodeTypes={nodeTypes}
+          defaultEdgeOptions={{ animated: true }}
+          fitView
+          attributionPosition="bottom-left"
+        >
+          <Background 
+            variant={BackgroundVariant.Dots}
+            gap={30} 
+            size={0.8} 
+            color="#ced9d8"
+            style={{ backgroundColor: "#0E0E13" }}
+          />
+          <Controls 
+            position="bottom-center" 
+            className="-translate-x-1/4" 
+            style={{ display: 'flex', flexDirection: 'row' }}
+          />
+              <MiniMap
+                nodeColor="#a855f7"
+                maskColor="rgba(168, 85, 247, 0.3)"
+                position="bottom-right"
+                style={{
+                  backgroundColor: '#1a0a2e',
+                  border: '1px solid #a855f7',
+                }}
+              />
+        </ReactFlow>
+      </div>
+
+      {/* Delete Nodes Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteNodeModal}
+        onClose={() => {
+          setShowDeleteNodeModal(false);
+          setNodesToDelete([]);
+        }}
+        onConfirm={handleDeleteNodesConfirm}
+        title="Delete Nodes"
+        message={`Are you sure you want to delete ${nodesToDelete.length} selected node(s)? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmButtonColor="bg-red-600 hover:bg-red-700"
+      />
+    </>
   );
 }
 

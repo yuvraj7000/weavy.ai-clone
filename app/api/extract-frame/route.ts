@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMExecuteSchema } from "@/lib/types";
-import { triggerLLMTask } from "@/lib/trigger";
+import { triggerExtractFrameTask } from "@/lib/trigger";
+import { z } from "zod";
+
+const ExtractFrameSchema = z.object({
+  videoUrl: z.string().url(),
+  timestamp: z.string(), // "5" or "50%"
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Validate request with Zod
-    const validationResult = LLMExecuteSchema.safeParse(body);
+    const validationResult = ExtractFrameSchema.safeParse(body);
     
     if (!validationResult.success) {
       return NextResponse.json(
@@ -22,25 +26,22 @@ export async function POST(request: NextRequest) {
 
     const validatedData = validationResult.data;
 
-    // Trigger LLM task via Trigger.dev
-    const handle = await triggerLLMTask({
-      model: validatedData.model,
-      systemPrompt: validatedData.systemPrompt,
-      userMessage: validatedData.userMessage,
-      images: validatedData.images,
+    // Trigger extract frame task via Trigger.dev
+    const handle = await triggerExtractFrameTask({
+      videoUrl: validatedData.videoUrl,
+      timestamp: validatedData.timestamp,
     });
 
-    // Return task handle with publicAccessToken for realtime updates
     return NextResponse.json(
       {
         success: true,
         runId: handle.id,
         publicAccessToken: handle.publicAccessToken,
       },
-      { status: 202 } // Accepted - task is processing
+      { status: 202 }
     );
   } catch (error: unknown) {
-    console.error("LLM API error:", error);
+    console.error("Extract Frame API error:", error);
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
       {

@@ -18,6 +18,7 @@ export default function Toolbar() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [workflowName, setWorkflowName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const { showToast } = useToast();
   const {
     nodes,
@@ -34,17 +35,23 @@ export default function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = useCallback(() => {
-    const data = { nodes, edges };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `workflow-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [nodes, edges]);
+    try {
+      const data = { nodes, edges };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `workflow-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Workflow exported successfully!", "success");
+    } catch (error) {
+      console.error("Error exporting workflow:", error);
+      showToast("Failed to export workflow", "error");
+    }
+  }, [nodes, edges, showToast]);
 
   const handleImport = useCallback(() => {
     fileInputRef.current?.click();
@@ -94,6 +101,7 @@ export default function Toolbar() {
       return;
     }
 
+    setIsSaving(true);
     try {
       const imageNodes = nodes.filter(
         (node) => node.type === "image" && node.data?.imageBase64 && !node.data?.imageUrl
@@ -179,6 +187,10 @@ export default function Toolbar() {
     } catch (error) {
       console.error("Error saving workflow:", error);
       showToast("Failed to save workflow", "error");
+    } finally {
+      setIsSaving(false);
+      setShowSaveModal(false);
+      setWorkflowName("");
     }
   }, [nodes, edges, workflowName, workflowId, currentWorkflowName, showToast]);
 
@@ -198,10 +210,15 @@ export default function Toolbar() {
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-[#353539] border border-[#5C5C5F] rounded-lg shadow-lg p-1.5">
         <button
           onClick={handleSaveClick}
-          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
+          disabled={isSaving}
+          className="px-3 py-1.5 hover:bg-[#3d3d42] rounded disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm transition-colors border border-transparent hover:border-[#5C5C5F]"
           title="Save Workflow"
         >
-          <Save className="w-4 h-4" />
+          {isSaving ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
         </button>
         <button
           onClick={handleClearClick}

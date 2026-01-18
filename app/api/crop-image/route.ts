@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LLMExecuteSchema } from "@/lib/types";
-import { triggerLLMTask } from "@/lib/trigger";
+import { triggerCropImageTask } from "@/lib/trigger";
+import { z } from "zod";
+
+const CropImageSchema = z.object({
+  imageUrl: z.string().url(),
+  xPercent: z.number().min(0).max(100).default(0),
+  yPercent: z.number().min(0).max(100).default(0),
+  widthPercent: z.number().min(0).max(100).default(100),
+  heightPercent: z.number().min(0).max(100).default(100),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Validate request with Zod
-    const validationResult = LLMExecuteSchema.safeParse(body);
+    const validationResult = CropImageSchema.safeParse(body);
     
     if (!validationResult.success) {
       return NextResponse.json(
@@ -22,25 +29,25 @@ export async function POST(request: NextRequest) {
 
     const validatedData = validationResult.data;
 
-    // Trigger LLM task via Trigger.dev
-    const handle = await triggerLLMTask({
-      model: validatedData.model,
-      systemPrompt: validatedData.systemPrompt,
-      userMessage: validatedData.userMessage,
-      images: validatedData.images,
+    // Trigger crop image task via Trigger.dev
+    const handle = await triggerCropImageTask({
+      imageUrl: validatedData.imageUrl,
+      xPercent: validatedData.xPercent,
+      yPercent: validatedData.yPercent,
+      widthPercent: validatedData.widthPercent,
+      heightPercent: validatedData.heightPercent,
     });
 
-    // Return task handle with publicAccessToken for realtime updates
     return NextResponse.json(
       {
         success: true,
         runId: handle.id,
         publicAccessToken: handle.publicAccessToken,
       },
-      { status: 202 } // Accepted - task is processing
+      { status: 202 }
     );
   } catch (error: unknown) {
-    console.error("LLM API error:", error);
+    console.error("Crop Image API error:", error);
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
       {

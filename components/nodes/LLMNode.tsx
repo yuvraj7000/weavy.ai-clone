@@ -1,15 +1,20 @@
 "use client";
 
-import { memo, useCallback, useState, useRef, useEffect } from "react";
+import { memo, useCallback, useRef, useEffect } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { useWorkflowStore } from "@/store/workflowStore";
 import { Sparkles, Loader2, ArrowRight } from "lucide-react";
+import { useRealtimeRun } from "@trigger.dev/react-hooks";
+import { useToast } from "@/components/Toast";
+import type { executeLLMTask } from "@/src/trigger/llm.task";
 
 interface LLMNodeData {
   model: string;
   systemPrompt?: string;
   output?: string;
   loading?: boolean;
+  runId?: string;
+  publicAccessToken?: string;
 }
 
 const GEMINI_MODELS = [
@@ -20,14 +25,15 @@ const GEMINI_MODELS = [
 function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const outputTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const { showToast } = useToast();
 
-  const [loading, setLoading] = useState(false);
-
-  const handleModelChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      updateNodeData(id, { model: e.target.value });
-    },
-    [id, updateNodeData]
+  // Use realtime run hook if runId and publicAccessToken are available
+  const { run, error: realtimeError } = useRealtimeRun<typeof executeLLMTask>(
+    data.runId || "",
+    {
+      accessToken: data.publicAccessToken || "",
+      enabled: !!data.runId && !!data.publicAccessToken,
+    }
   );
 
   // Auto-resize output textarea function
@@ -39,6 +45,59 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
     }
   }, []);
 
+  // Derive loading state from both store and realtime run status
+  const isLoading = data.loading || (run && (run.status === "EXECUTING" || run.status === "WAITING"));
+
+  // Update node data when realtime run updates
+  useEffect(() => {
+    if (run) {
+      if (run.status === "COMPLETED" && run.output) {
+        const result = run.output as { success: boolean; data?: { text: string }; error?: string };
+        if (result.success && result.data) {
+          updateNodeData(id, {
+            output: result.data.text,
+            loading: false,
+          });
+          showToast("LLM task completed successfully!", "success");
+          setTimeout(adjustOutputHeight, 0);
+        } else if (result.error) {
+          showToast(`Error: ${result.error}`, "error");
+          updateNodeData(id, {
+            loading: false,
+          });
+        }
+      } else if (run.status === "FAILED" || run.status === "CRASHED") {
+        const errorMsg = "Task failed. Check Trigger.dev dashboard for details.";
+        showToast(errorMsg, "error");
+        updateNodeData(id, {
+          loading: false,
+        });
+      } else if (run.status === "EXECUTING" || run.status === "WAITING") {
+        updateNodeData(id, {
+          loading: true,
+        });
+      }
+    }
+  }, [run, id, updateNodeData, adjustOutputHeight, showToast]);
+
+  // Handle realtime errors
+  useEffect(() => {
+    if (realtimeError) {
+      console.error("Realtime error:", realtimeError);
+      showToast("Realtime connection error", "error");
+      updateNodeData(id, {
+        loading: false,
+      });
+    }
+  }, [realtimeError, id, updateNodeData, showToast]);
+
+  const handleModelChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      updateNodeData(id, { model: e.target.value });
+    },
+    [id, updateNodeData]
+  );
+
   // Adjust height when output changes
   useEffect(() => {
     if (data.output) {
@@ -47,7 +106,9 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
   }, [data.output, adjustOutputHeight]);
 
   const handleRun = useCallback(async () => {
-    setLoading(true);
+    // Prevent running if already loading
+    if (data.loading) return;
+
     updateNodeData(id, { loading: true });
 
     try {
@@ -95,8 +156,7 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
       }
 
       if (!prompt && images.length === 0) {
-        alert("Please connect a Prompt node or Image node to the input handles");
-        setLoading(false);
+        showToast("Please connect a Prompt node or Image node to the input handles", "error");
         updateNodeData(id, { loading: false });
         return;
       }
@@ -116,24 +176,27 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
 
       const result = await response.json();
 
-      if (result.success) {
+      if (result.success && result.runId && result.publicAccessToken) {
+        // Task triggered successfully - store runId and token for realtime updates
+        // Loading state will be managed by realtime run updates
         updateNodeData(id, {
-          output: result.data.text,
-          loading: false,
+          loading: true,
+          runId: result.runId,
+          publicAccessToken: result.publicAccessToken,
         });
-        setTimeout(adjustOutputHeight, 0);
+        showToast("LLM task started!", "success");
+        // The useRealtimeRun hook will automatically update the node when the task completes
       } else {
-        alert(`Error: ${result.error}`);
+        const errorMsg = result.error || "Failed to trigger task";
+        showToast(errorMsg, "error");
         updateNodeData(id, { loading: false });
       }
     } catch (error) {
       console.error("Error executing LLM:", error);
-      alert("Failed to execute LLM request");
+      showToast("Failed to execute LLM request", "error");
       updateNodeData(id, { loading: false });
-    } finally {
-      setLoading(false);
     }
-  }, [id, data.model, updateNodeData, adjustOutputHeight]);
+  }, [id, data.model, data.loading, updateNodeData, showToast]);
 
   return (
     <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
@@ -191,10 +254,10 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           </div>
           <button
             onClick={handleRun}
-            disabled={loading}
+            disabled={isLoading}
             className="px-2 py-1 text-sm border border-[#5C5C5F] text-gray-400 rounded-[4px] hover:bg-[#3d3d42] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#353539] flex items-center gap-2 transition-colors"
           >
-            {loading ? (
+            {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Running...</span>
@@ -214,7 +277,7 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
             value={data.model || "gemini-2.5-flash"}
             onChange={handleModelChange}
             className="w-full p-3 text-sm bg-[#353539] border-none rounded focus:outline-none focus:ring-2 focus:ring-[#5C5C5F] text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
-            disabled={loading}
+            disabled={isLoading}
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat',
@@ -240,10 +303,10 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           <textarea
             ref={outputTextareaRef}
             value={data.output || ""}
-            placeholder={loading ? "Running..." : "Result will appear here after running..."}
+            placeholder={isLoading ? "Running..." : "Result will appear here after running..."}
             readOnly
             className="w-full min-h-[150px] max-w-[500px] p-4 mt-2 text-sm bg-[#353539] border-none rounded resize-none focus:outline-none text-white placeholder-[#5C5C5F] disabled:opacity-70 overflow-y-auto"
-            disabled={loading}
+            disabled={isLoading}
             style={{ height: data.output ? 'auto' : '150px' }}
           />
         </div>

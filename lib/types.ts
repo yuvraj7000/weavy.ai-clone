@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Node Types
-export type NodeType = "text" | "image" | "llm";
+export type NodeType = "text" | "image" | "llm" | "video" | "cropImage" | "extractFrame";
 
 // LLM Request Schema
 export const LLMExecuteSchema = z.object({
