@@ -7,6 +7,7 @@ import { Crop, Loader2, ArrowRight } from "lucide-react";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { useToast } from "@/components/Toast";
 import type { cropImageTask } from "@/src/trigger/cropImage.task";
+import { emitRunStatusUpdate } from "@/components/RightSidebar";
 
 interface CropImageNodeData {
   imageUrl?: string; // Input image URL
@@ -44,16 +45,18 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
     if (run) {
       // Emit run status update for RightSidebar
       if (typeof window !== "undefined") {
-        const { emitRunStatusUpdate } = require("@/components/RightSidebar");
-        emitRunStatusUpdate({
-          id: run.id,
-          status: run.status,
-          nodeId: id,
-          nodeType: "cropImage",
-          nodeName: "Crop Image Node",
-          error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
-          output: run.output,
-        });
+        const status = run.status as "EXECUTING" | "WAITING" | "COMPLETED" | "FAILED" | "CRASHED";
+        if (["EXECUTING", "WAITING", "COMPLETED", "FAILED", "CRASHED"].includes(run.status)) {
+          emitRunStatusUpdate({
+            id: run.id,
+            status,
+            nodeId: id,
+            nodeType: "cropImage",
+            nodeName: "Crop Image Node",
+            error: run.status === "FAILED" || run.status === "CRASHED" ? "Task failed" : undefined,
+            output: run.output,
+          });
+        }
       }
 
       if (run.status === "COMPLETED" && run.output) {
@@ -195,6 +198,13 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
   }, [id, data.imageUrl, connectedImage, xPercent, yPercent, widthPercent, heightPercent, updateNodeData, showToast]);
 
   const displayImage = data.croppedImageUrl;
+  const inputImage = data.imageUrl || connectedImage;
+  
+  // Calculate crop preview overlay dimensions
+  const x = parseFloat(xPercent) || 0;
+  const y = parseFloat(yPercent) || 0;
+  const width = parseFloat(widthPercent) || 100;
+  const height = parseFloat(heightPercent) || 100;
 
   return (
     <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
@@ -295,19 +305,89 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
           </div>
         </div>
 
-        {/* Image Preview */}
+        {/* Crop Preview - Show input image with crop overlay */}
+        {inputImage && !displayImage && (
+          <div className="relative bg-[#353539] rounded p-2 mt-2 overflow-hidden">
+            <div className="relative w-full" style={{ aspectRatio: "16/9", maxHeight: "200px" }}>
+              <img
+                src={inputImage}
+                alt="Crop preview"
+                className="w-full h-full object-contain rounded"
+              />
+              {/* Crop overlay - darken area outside crop box */}
+              <div className="absolute inset-0 pointer-events-none">
+                {/* Top overlay */}
+                <div
+                  className="absolute top-0 left-0 bg-black/60"
+                  style={{
+                    width: "100%",
+                    height: `${y}%`,
+                  }}
+                />
+                {/* Bottom overlay */}
+                <div
+                  className="absolute bottom-0 left-0 bg-black/60"
+                  style={{
+                    width: "100%",
+                    height: `${100 - y - height}%`,
+                  }}
+                />
+                {/* Left overlay */}
+                <div
+                  className="absolute left-0 bg-black/60"
+                  style={{
+                    width: `${x}%`,
+                    top: `${y}%`,
+                    height: `${height}%`,
+                  }}
+                />
+                {/* Right overlay */}
+                <div
+                  className="absolute right-0 bg-black/60"
+                  style={{
+                    width: `${100 - x - width}%`,
+                    top: `${y}%`,
+                    height: `${height}%`,
+                  }}
+                />
+                {/* Crop box border */}
+                <div
+                  className="absolute border-2 border-yellow-400 border-dashed"
+                  style={{
+                    left: `${x}%`,
+                    top: `${y}%`,
+                    width: `${width}%`,
+                    height: `${height}%`,
+                  }}
+                />
+                {/* Crop info label */}
+                <div
+                  className="absolute bg-yellow-400/90 text-black text-xs px-2 py-1 rounded font-medium"
+                  style={{
+                    left: `${x}%`,
+                    top: `${Math.max(y - 20, 0)}%`,
+                    transform: y < 20 ? "translateY(100%)" : "none",
+                  }}
+                >
+                  {width.toFixed(0)}% × {height.toFixed(0)}%
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-400 mt-1 text-center">Preview</div>
+          </div>
+        )}
+
+        {/* Cropped Result Image */}
         {displayImage && (
           <div className="relative bg-[#353539] rounded p-2 mt-2">
             <img
               src={displayImage}
-              alt="Crop preview"
+              alt="Cropped result"
               className="w-full h-auto max-h-[200px] object-contain rounded"
             />
-            {data.croppedImageUrl && (
-              <div className="absolute bottom-3 left-3 px-2 py-1 bg-green-600 text-white text-xs rounded">
-                Cropped
-              </div>
-            )}
+            <div className="absolute bottom-3 left-3 px-2 py-1 bg-green-600 text-white text-xs rounded">
+              Cropped
+            </div>
           </div>
         )}
 

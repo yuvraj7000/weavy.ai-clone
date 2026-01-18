@@ -80,7 +80,7 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           });
         }
       } else if (run.status === "FAILED" || run.status === "CRASHED") {
-        const errorMsg = "Task failed. Check Trigger.dev dashboard for details.";
+        const errorMsg = "Task failed. API quota exceeded.";
         showToast(errorMsg, "error");
         updateNodeData(id, {
           loading: false,

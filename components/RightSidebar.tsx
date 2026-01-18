@@ -393,7 +393,7 @@ function LogItem({ log }: { log: LogEntry }) {
       </div>
       {expanded && log.details && (
         <div className="mt-2 pt-2 border-t border-[#302e33]">
-          <p className="text-xs text-gray-400 font-mono whitespace-pre-wrap break-words">
+          <p className="text-xs text-gray-400 font-mono break-words line-clamp-2">
             {log.details}
           </p>
         </div>
