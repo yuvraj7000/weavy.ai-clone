@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        data: workflows.map((w) => ({
+        data: (workflows as Workflow[]).map((w) => ({
           id: w.id,
           name: w.name,
           nodes: w.nodes,
