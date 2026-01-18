@@ -49,7 +49,6 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
             croppedImageUrl: result.data.url,
             loading: false,
           });
-          showToast("Image cropped successfully!", "success");
         } else if (result.error) {
           showToast(`Error: ${result.error}`, "error");
           updateNodeData(id, {
@@ -161,7 +160,6 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
           runId: result.runId,
           publicAccessToken: result.publicAccessToken,
         });
-        showToast("Image crop started!", "success");
         // The useRealtimeRun hook will automatically update the node when the task completes
       } else {
         const errorMsg = result.error || "Failed to trigger crop image task";
@@ -182,7 +180,7 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
     }
   }, [id, data.imageUrl, connectedImage, xPercent, yPercent, widthPercent, heightPercent, updateNodeData, showToast]);
 
-  const displayImage = data.croppedImageUrl || data.imageUrl || connectedImage;
+  const displayImage = data.croppedImageUrl;
 
   return (
     <div className="bg-[#212126] rounded-lg min-w-[350px] relative group">
@@ -210,7 +208,7 @@ function CropImageNode({ id, data }: NodeProps<CropImageNodeData>) {
           </div>
           <button
             onClick={handleRun}
-            disabled={data.loading || !displayImage}
+            disabled={data.loading || !data.imageUrl}
             className="px-2 py-1 text-sm border border-[#5C5C5F] text-gray-400 rounded-[4px] hover:bg-[#3d3d42] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
           >
             {data.loading ? (

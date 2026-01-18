@@ -46,7 +46,6 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
             extractedFrameUrl: result.data.url,
             loading: false,
           });
-          showToast("Frame extracted successfully!", "success");
         } else if (result.error) {
           showToast(`Error: ${result.error}`, "error");
           updateNodeData(id, {
@@ -168,7 +167,6 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
           runId: result.runId,
           publicAccessToken: result.publicAccessToken,
         });
-        showToast("Frame extraction started!", "success");
         // The useRealtimeRun hook will automatically update the node when the task completes
       } else {
         const errorMsg = result.error || "Failed to trigger extract frame task";
@@ -256,7 +254,7 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
         </div>
 
         {/* Video Preview */}
-        {displayVideo && (
+        {/* {displayVideo && (
           <div className="relative bg-[#353539] rounded p-2 mt-2">
             <video
               ref={videoRef}
@@ -271,7 +269,7 @@ function ExtractFrameNode({ id, data }: NodeProps<ExtractFrameNodeData>) {
               </div>
             )}
           </div>
-        )}
+        )} */}
 
         {/* Extracted Frame Preview */}
         {data.extractedFrameUrl && (

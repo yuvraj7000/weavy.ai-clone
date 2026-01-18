@@ -459,8 +459,19 @@ function WorkflowCanvas() {
           isValid = true;
           connectionType = "image";
         }
-        // Image -> CropImage Image Input
+        // Image -> CropImage Image Input (only one image node allowed)
         else if (sourceNode.type === "image" && targetNode.type === "cropImage") {
+          // Check if there's already an image node connected to this cropImage node
+          const existingImageConnection = edges.find(
+            (e) => e.target === connection.target && e.targetHandle === "image"
+          );
+          if (existingImageConnection) {
+            const existingSourceNode = nodes.find((n) => n.id === existingImageConnection.source);
+            if (existingSourceNode?.type === "image") {
+              showToast("Only one image node can be connected to a crop node!", "error");
+              return;
+            }
+          }
           isValid = true;
           connectionType = "image";
         }
@@ -487,9 +498,20 @@ function WorkflowCanvas() {
       }
 
       // ========== VIDEO NODE CONNECTIONS ==========
-      // Video -> ExtractFrame Video Input
+      // Video -> ExtractFrame Video Input (only one video node allowed)
       else if (sourceHandle === "video" && targetHandle === "video") {
         if (sourceNode.type === "video" && targetNode.type === "extractFrame") {
+          // Check if there's already a video node connected to this extractFrame node
+          const existingVideoConnection = edges.find(
+            (e) => e.target === connection.target && e.targetHandle === "video"
+          );
+          if (existingVideoConnection) {
+            const existingSourceNode = nodes.find((n) => n.id === existingVideoConnection.source);
+            if (existingSourceNode?.type === "video") {
+              showToast("Only one video node can be connected to a frame extractor node!", "error");
+              return;
+            }
+          }
           isValid = true;
           connectionType = "video";
         }
@@ -508,7 +530,6 @@ function WorkflowCanvas() {
         };
         const updatedEdges = addEdge(newEdge, edges);
         setEdges(updatedEdges);
-        showToast("Connection created successfully!", "success");
       } else {
         // Provide helpful error message based on node types
         let errorMsg = "Invalid connection! ";

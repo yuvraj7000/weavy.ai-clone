@@ -58,7 +58,6 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
             output: result.data.text,
             loading: false,
           });
-          showToast("LLM task completed successfully!", "success");
           setTimeout(adjustOutputHeight, 0);
         } else if (result.error) {
           showToast(`Error: ${result.error}`, "error");
@@ -184,7 +183,6 @@ function LLMNode({ id, data }: NodeProps<LLMNodeData>) {
           runId: result.runId,
           publicAccessToken: result.publicAccessToken,
         });
-        showToast("LLM task started!", "success");
         // The useRealtimeRun hook will automatically update the node when the task completes
       } else {
         const errorMsg = result.error || "Failed to trigger task";
